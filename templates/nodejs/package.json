@@ -1,0 +1,8 @@
+{
+	"name": "serverless-yandex-cloud-template",
+	"version": "1.0.0",
+	"devDependencies": {
+        "serverless": "latest",
+		"serverless-yandex-cloud": "latest"
+	}
+}
