@@ -20,6 +20,7 @@ functions:
     handler: index.hello
     memory: 128
     timeout: 5
+    account: function-sa
 
   timer:
     handler: index.hello
@@ -38,3 +39,7 @@ resources:
     type: yc::ServiceAccount
     roles:
       - serverless.functions.invoker
+  function-sa:
+    type: yc::ServiceAccount
+    roles:
+      - editor
