@@ -7,7 +7,7 @@ provider:
   runtime: nodejs12
 
 plugins:
-  - serverless-yandex-cloud
+  - serverless-yc-biterp
 
 package:
   exclude:

@@ -3,6 +3,6 @@
 	"version": "1.0.0",
 	"devDependencies": {
         "serverless": "latest",
-		"serverless-yandex-cloud": "latest"
+		"serverless-yc-biterp": "git+https://github.com/BITERP/serverless-plugin"
 	}
 }

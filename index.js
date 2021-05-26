@@ -11,7 +11,7 @@ class YandexCloudServerlessPlugin {
     constructor(serverless, options) {
         this.serverless = serverless;
         this.options = options;
-
+		
         this.serverless.pluginManager.addPlugin(YandexCloudProvider);
         this.serverless.pluginManager.addPlugin(YandexCloudDeploy);
         this.serverless.pluginManager.addPlugin(YandexCloudRemove);
