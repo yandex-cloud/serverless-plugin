@@ -27,11 +27,17 @@
     "yandex-cloud": "^1.4.3"
   },
   "devDependencies": {
+    "@commitlint/cli": "^16.0.1",
+    "@commitlint/config-conventional": "^16.0.0",
+    "@semantic-release/git": "^10.0.1",
+    "husky": "^7.0.4",
     "jest": "^27.4.5",
-    "prettier": "^2.0.5"
+    "prettier": "^2.0.5",
+    "semantic-release": "^18.0.1"
   },
   "scripts": {
     "test": "jest",
-    "prettier": "prettier --config .prettierrc.json --write index.js lib/**/*.js"
+    "prettier": "prettier --config .prettierrc.json --write index.js lib/**/*.js",
+    "prepare": "husky install"
   }
 }
