@@ -9,7 +9,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yandex-cloud/serverless-plugin.git"
+    "url": "https://github.com/yandex-cloud/serverless-plugin.git"
   },
   "author": "Yandex LLC",
   "license": "MIT",
@@ -27,7 +27,7 @@
     "yandex-cloud": "^1.4.3"
   },
   "devDependencies": {
-    "jest": "latest",
+    "jest": "^27.4.5",
     "prettier": "^2.0.5"
   },
   "scripts": {
