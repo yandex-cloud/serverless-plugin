@@ -10,7 +10,7 @@
     "strict": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "lib": ["es6"]
+    "lib": ["es6", "ES2019.Object"]
   },
   "include": [
     "./src"
