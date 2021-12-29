@@ -32,7 +32,6 @@
     "@semantic-release/git": "^10.0.1",
     "husky": "^7.0.4",
     "jest": "^27.4.5",
-    "prettier": "^2.0.5",
     "semantic-release": "^18.0.1"
   },
   "scripts": {
