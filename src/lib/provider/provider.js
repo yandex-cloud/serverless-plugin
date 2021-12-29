@@ -61,6 +61,7 @@ class YandexCloudProvider {
         this.serverless = serverless;
         this.options = options;
         this.serverless.setProvider(PROVIDER_NAME, this);
+        this.hooks = {};
     }
 
     async initConnectionsIfNeeded() {
