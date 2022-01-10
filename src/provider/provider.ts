@@ -1,63 +1,98 @@
-'use strict';
+import yc from 'yandex-cloud';
+import yaml from 'yaml';
+import fs from 'fs';
+import path from 'path';
+import Serverless from 'serverless';
+import ServerlessPlugin from 'serverless/classes/Plugin';
+import ServerlessAwsProvider from 'serverless/plugins/aws/provider/awsProvider';
+import AWS from 'aws-sdk';
+import long from 'long';
+import { FunctionService, ListFunctionsResponse } from 'yandex-cloud/api/serverless/functions/v1';
+import {
+    InvokeFunctionWithRetry,
+    ListTriggersResponse,
+    Trigger,
+    TriggerService,
+} from 'yandex-cloud/api/serverless/triggers/v1';
+import { ListServiceAccountsResponse, ServiceAccountService } from 'yandex-cloud/api/iam/v1';
+import { FolderService } from 'yandex-cloud/api/resourcemanager/v1';
+import { AccessBindingAction, ListAccessBindingsResponse } from 'yandex-cloud/api/access';
+import { InvokeService } from 'yandex-cloud/lib/serverless/functions/v1/invoke';
+import { ListRegistriesResponse, RegistryService } from 'yandex-cloud/api/containerregistry/v1';
+import {
+    CreateContainerRegistryRequest,
+    CreateCronTriggerRequest,
+    CreateCrTriggerRequest,
+    CreateFunctionRequest,
+    CreateMessageQueueRequest,
+    CreateS3BucketRequest,
+    CreateS3TriggerRequest,
+    CreateServiceAccountRequest,
+    CreateYmqTriggerRequest,
+    InvokeFunctionRequest,
+    UpdateFunctionRequest,
+} from './types';
+
+import { getEnv } from '../utils/get-env';
+
+import 'yandex-cloud/lib/operation'; // side-effect, patches Operation
 
 const PROVIDER_NAME = 'yandex-cloud';
 
-const yc = require('yandex-cloud');
-const yaml = require('yaml');
-const fs = require('fs');
-const path = require('path');
-
-const AWS = require('aws-sdk');
-
-// noinspection JSUnusedLocalSymbols
-const _ = require('yandex-cloud/lib/operation');
-const {FunctionService} = require('yandex-cloud/api/serverless/functions/v1');
-const {TriggerService, Trigger} = require('yandex-cloud/api/serverless/triggers/v1');
-const {ServiceAccountService} = require('yandex-cloud/api/iam/v1');
-const {FolderService} = require('yandex-cloud/api/resourcemanager/v1');
-const {AccessBindingAction} = require('yandex-cloud/api/access');
-const {InvokeService} = require('yandex-cloud/lib/serverless/functions/v1/invoke');
-const {RegistryService} = require('yandex-cloud/api/containerregistry/v1');
-
-function readCliConfig() {
-    const configFile = path.join(process.env.HOME, '.config/yandex-cloud/config.yaml');
+const readCliConfig = () => {
+    const configFile = path.join(getEnv('HOME'), '.config/yandex-cloud/config.yaml');
 
     let config;
+
     try {
         config = yaml.parse(fs.readFileSync(configFile, 'utf8'));
-    } catch (e) {
-        throw new Error(`Failed to read config ${configFile}: ${e.toString()}`);
+    } catch (error) {
+        throw new Error(`Failed to read config ${configFile}: ${error}`);
     }
 
-    const current = config.current;
+    const { current, profiles } = config;
+
     if (!current) {
         throw new Error(`Invalid config in ${configFile}: no current profile selected`);
     }
 
-    if (!config.profiles[current]) {
+    if (!profiles[current]) {
         throw new Error(`Invalid config in ${configFile}: no profile named ${current} exists`);
     }
-    return config.profiles[current];
-}
 
-async function fileToBase64(filePath) {
-    const data = await new Promise((resolve, reject) => {
-        fs.readFile(filePath, (err, data) => {
-            if (err) {
-                return reject(err);
-            }
-            resolve(data);
-        });
-    });
-    return data.toString('base64');
-}
+    return profiles[current];
+};
 
-class YandexCloudProvider {
+const fileToBase64 = (filePath: string) => fs.readFileSync(filePath, 'base64');
+
+export class YandexCloudProvider extends ServerlessAwsProvider implements ServerlessPlugin {
+    hooks: ServerlessPlugin.Hooks;
+    commands?: ServerlessPlugin.Commands | undefined;
+    variableResolvers?: ServerlessPlugin.VariableResolvers | undefined;
+
+    private readonly serverless: Serverless;
+    private readonly options: Serverless.Options;
+
+    // TODO: get rid of non-null assertion
+    private session!: yc.Session;
+    private folderId!: string;
+    private cloudId!: string;
+    private triggers!: TriggerService;
+    private serviceAccounts!: ServiceAccountService;
+    private functions!: FunctionService;
+    private folders!: FolderService;
+    private invokeService!: InvokeService;
+    private containerRegistryService!: RegistryService;
+    private ymq!: AWS.SQS;
+    private s3!: AWS.S3;
+
     static getProviderName() {
         return PROVIDER_NAME;
     }
 
-    constructor(serverless, options) {
+    constructor(serverless: Serverless, options: Serverless.Options) {
+        super(serverless, options);
+
         this.serverless = serverless;
         this.options = options;
         this.serverless.setProvider(PROVIDER_NAME, this);
@@ -69,7 +104,8 @@ class YandexCloudProvider {
             return;
         }
         const config = readCliConfig();
-        const session = new yc.Session({oauthToken: config.token});
+        const session = new yc.Session({ oauthToken: config.token });
+
         if (config.endpoint) {
             await session.setEndpoint(config.endpoint);
         }
@@ -83,7 +119,7 @@ class YandexCloudProvider {
         this.functions = new FunctionService(this.session);
         this.folders = new FolderService(this.session);
         this.invokeService = new InvokeService(this.session);
-        this.conatinerRegistryService = new RegistryService(this.session);
+        this.containerRegistryService = new RegistryService(this.session);
     }
 
     async initAwsSdkIfNeeded() {
@@ -95,6 +131,7 @@ class YandexCloudProvider {
             accessKeyId: process.env.AWS_ACCESS_KEY_ID,
             secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
         };
+
         this.ymq = new AWS.SQS({
             endpoint: process.env.YMQ_ENDPOINT ? process.env.YMQ_ENDPOINT : 'https://message-queue.api.cloud.yandex.net',
             ...config,
@@ -105,19 +142,19 @@ class YandexCloudProvider {
         });
     }
 
-    makeInvokeFunctionWithRetryParams(request) {
+    makeInvokeFunctionWithRetryParams(request: InvokeFunctionRequest): InvokeFunctionWithRetry {
         return {
             functionId: request.functionId,
             serviceAccountId: request.serviceAccount,
             retrySettings: request.retry
                 ? {
-                    retryAttempts: request.retry.attempts,
+                    retryAttempts: long.fromNumber(request.retry.attempts),
                     interval: {
-                        seconds: request.retry.interval,
+                        seconds: long.fromNumber(request.retry.interval),
                     },
                 }
                 : undefined,
-            deadLetterQueue: request.dlqId
+            deadLetterQueue: request.dlqId && request.dlqAccountId
                 ? {
                     queueId: request.dlqId,
                     serviceAccountId: request.dlqAccountId,
@@ -126,7 +163,7 @@ class YandexCloudProvider {
         };
     }
 
-    async createCronTrigger(request) {
+    async createCronTrigger(request: CreateCronTriggerRequest) {
         await this.initConnectionsIfNeeded();
         const operation = await this.triggers.create({
             folderId: this.folderId,
@@ -138,10 +175,11 @@ class YandexCloudProvider {
                 },
             },
         });
+
         return operation.completion(this.session);
     }
 
-    convertS3EvenType(type) {
+    convertS3EvenType(type: string) {
         return {
             'create.object': Trigger.ObjectStorageEventType.OBJECT_STORAGE_EVENT_TYPE_CREATE_OBJECT,
             'delete.object': Trigger.ObjectStorageEventType.OBJECT_STORAGE_EVENT_TYPE_DELETE_OBJECT,
@@ -149,8 +187,9 @@ class YandexCloudProvider {
         }[type];
     }
 
-    async createS3Trigger(request) {
+    async createS3Trigger(request: CreateS3TriggerRequest) {
         await this.initConnectionsIfNeeded();
+
         const operation = await this.triggers.create({
             folderId: this.folderId,
             name: request.name,
@@ -164,10 +203,11 @@ class YandexCloudProvider {
                 },
             },
         });
+
         return operation.completion(this.session);
     }
 
-    async createYMQTrigger(request) {
+    async createYMQTrigger(request: CreateYmqTriggerRequest) {
         await this.initConnectionsIfNeeded();
         const operation = await this.triggers.create({
             folderId: this.folderId,
@@ -179,7 +219,7 @@ class YandexCloudProvider {
                     suffix: request.suffix,
                     batchSettings: {
                         size: request.batch,
-                        cutoff: {seconds: request.cutoff},
+                        cutoff: { seconds: request.cutoff },
                     },
                     invokeFunction: {
                         functionId: request.functionId,
@@ -188,10 +228,11 @@ class YandexCloudProvider {
                 },
             },
         });
+
         return operation.completion(this.session);
     }
 
-    convertCREventType(type) {
+    convertCREventType(type: string) {
         return {
             'create.image': Trigger.ContainerRegistryEventType.CONTAINER_REGISTRY_EVENT_TYPE_CREATE_IMAGE,
             'delete.image': Trigger.ContainerRegistryEventType.CONTAINER_REGISTRY_EVENT_TYPE_DELETE_IMAGE,
@@ -200,7 +241,7 @@ class YandexCloudProvider {
         }[type];
     }
 
-    async createCRTrigger(request) {
+    async createCRTrigger(request: CreateCrTriggerRequest) {
         await this.initConnectionsIfNeeded();
         const operation = await this.triggers.create({
             folderId: this.folderId,
@@ -215,12 +256,14 @@ class YandexCloudProvider {
                 },
             },
         });
+
         return operation.completion(this.session);
     }
 
-    async removeTrigger(id) {
+    async removeTrigger(id: string) {
         await this.initConnectionsIfNeeded();
-        const operation = await this.triggers.delete({triggerId: id});
+        const operation = await this.triggers.delete({ triggerId: id });
+
         return operation.completion(this.session);
     }
 
@@ -228,20 +271,27 @@ class YandexCloudProvider {
         await this.initConnectionsIfNeeded();
         const result = [];
 
-        let nextPageToken = null;
+        let nextPageToken;
+
         do {
-            const responce = await this.triggers.list({
+            // eslint-disable-next-line no-await-in-loop
+            const responce: ListTriggersResponse = await this.triggers.list({
                 folderId: this.folderId,
                 pageToken: nextPageToken,
             });
-            for (const trigger of responce.triggers) {
-                result.push({
-                    name: trigger.name,
-                    id: trigger.id,
-                });
+
+            if (responce.triggers) {
+                for (const trigger of responce.triggers) {
+                    result.push({
+                        name: trigger.name,
+                        id: trigger.id,
+                    });
+                }
             }
+
             nextPageToken = responce.nextPageToken;
         } while (nextPageToken);
+
         return result;
     }
 
@@ -250,21 +300,28 @@ class YandexCloudProvider {
         const access = await this.getAccessBindings();
 
         const result = [];
-        let nextPageToken = null;
+        let nextPageToken;
+
         do {
-            const responce = await this.serviceAccounts.list({
+            // eslint-disable-next-line no-await-in-loop
+            const response: ListServiceAccountsResponse = await this.serviceAccounts.list({
                 folderId: this.folderId,
                 pageToken: nextPageToken,
             });
-            for (const account of responce.serviceAccounts) {
-                result.push({
-                    name: account.name,
-                    id: account.id,
-                    roles: access.filter((a) => a.subjectId === account.id).map((a) => a.role),
-                });
+
+            if (response.serviceAccounts) {
+                for (const account of response.serviceAccounts) {
+                    result.push({
+                        name: account.name,
+                        id: account.id,
+                        roles: access.filter((a) => a.subjectId === account.id).map((a) => a.role),
+                    });
+                }
             }
-            nextPageToken = responce.nextPageToken;
+
+            nextPageToken = response.nextPageToken;
         } while (nextPageToken);
+
         return result;
     }
 
@@ -272,30 +329,39 @@ class YandexCloudProvider {
         await this.initConnectionsIfNeeded();
         const result = [];
 
-        let nextPageToken = null;
+        let nextPageToken;
+
         do {
-            const responce = await this.folders.listAccessBindings({
+            // eslint-disable-next-line no-await-in-loop
+            const response: ListAccessBindingsResponse = await this.folders.listAccessBindings({
                 resourceId: this.folderId,
                 pageToken: nextPageToken,
             });
-            for (const access of responce.accessBindings) {
-                result.push({
-                    role: access.roleId,
-                    subjectId: access.subject.id,
-                });
+
+            if (response.accessBindings) {
+                for (const access of response.accessBindings) {
+                    result.push({
+                        role: access.roleId,
+                        subjectId: access.subject.id,
+                    });
+                }
             }
-            nextPageToken = responce.nextPageToken;
+
+            nextPageToken = response.nextPageToken;
         } while (nextPageToken);
+
         return result;
     }
 
-    async updateAccessBindings(saId, roles) {
+    async updateAccessBindings(saId: string, roles: string[]) {
         await this.initConnectionsIfNeeded();
+
         if (!roles || roles.length === 0) {
             return;
         }
 
         const accessBindingDeltas = [];
+
         for (const roleId of Object.values(roles)) {
             accessBindingDeltas.push({
                 action: AccessBindingAction.ADD,
@@ -313,35 +379,41 @@ class YandexCloudProvider {
             resourceId: this.folderId,
             accessBindingDeltas,
         });
+
         await operation.completion(this.session);
     }
 
-    async createServiceAccount(request) {
+    async createServiceAccount(request: CreateServiceAccountRequest) {
         await this.initConnectionsIfNeeded();
         const operation = await this.serviceAccounts.create({
             folderId: this.folderId,
             name: request.name,
         });
         const response = await operation.completion(this.session);
+
         await this.updateAccessBindings(response.getResponse().id, request.roles);
+
         return response.getResponse();
     }
 
-    async removeServiceAccount(id) {
+    async removeServiceAccount(id: string) {
         await this.initConnectionsIfNeeded();
-        return this.serviceAccounts.delete({serviceAccountId: id});
+
+        return this.serviceAccounts.delete({ serviceAccountId: id });
     }
 
-    async removeFunction(id) {
+    async removeFunction(id: string) {
         await this.initConnectionsIfNeeded();
         const operation = await this.functions.delete({
             functionId: id,
         });
+
         return operation.completion(this.session);
     }
 
-    async invokeFunction(id) {
+    async invokeFunction(id: string) {
         await this.initConnectionsIfNeeded();
+
         return this.invokeService.invoke(id);
     }
 
@@ -349,59 +421,69 @@ class YandexCloudProvider {
         await this.initConnectionsIfNeeded();
         const result = [];
 
-        let nextPageToken = null;
+        let nextPageToken;
+
         do {
-            const response = await this.functions.list({
+            // eslint-disable-next-line no-await-in-loop
+            const response: ListFunctionsResponse = await this.functions.list({
                 folderId: this.folderId,
                 pageToken: nextPageToken,
             });
-            for (const func of response.functions) {
-                result.push({
-                    name: func.name,
-                    id: func.id,
-                });
+
+            if (response.functions) {
+                for (const func of response.functions) {
+                    result.push({
+                        name: func.name,
+                        id: func.id,
+                    });
+                }
             }
+
             nextPageToken = response.nextPageToken;
         } while (nextPageToken);
+
         return result;
     }
 
-    async updateFunction(request) {
+    async updateFunction(request: UpdateFunctionRequest) {
         await this.initConnectionsIfNeeded();
         const operation = await this.functions.createVersion({
             functionId: request.id,
             runtime: request.runtime,
             entrypoint: request.handler,
-            resources: {memory: request.memory * 1024 * 1024},
+            resources: { memory: long.fromNumber(request.memory * 1024 * 1024) },
             executionTimeout: {
-                seconds: request.timeout,
+                seconds: long.fromNumber(request.timeout),
             },
             serviceAccountId: request.serviceAccount,
-            content: await fileToBase64(request.code),
+            content: Buffer.from(fileToBase64(request.code), 'base64'),
             environment: request.environment,
         });
+
         return operation.completion(this.session);
     }
 
     // noinspection JSUnusedLocalSymbols
-    async getFunctionLogs(id) {
+    async getFunctionLogs(id: string) {
         throw new Error('not implemented');
     }
 
-    async createFunction(request) {
+    async createFunction(request: CreateFunctionRequest) {
         await this.initConnectionsIfNeeded();
         let operation = await this.functions.create({
             name: request.name,
             folderId: this.folderId,
         });
+
         operation = await operation.completion(this.session);
 
         request.id = operation.getResponse().id;
         await this.updateFunction(request);
+
         return request;
     }
 
-    async getMessageQueueId(url) {
+    async getMessageQueueId(url: string) {
         const response = await this.ymq
             .getQueueAttributes({
                 QueueUrl: url,
@@ -409,10 +491,10 @@ class YandexCloudProvider {
             })
             .promise();
 
-        return response.Attributes.QueueArn;
+        return response.Attributes?.QueueArn;
     }
 
-    parseQueueName(url) {
+    parseQueueName(url: string) {
         return url.slice(url.lastIndexOf('/') + 1);
     }
 
@@ -421,100 +503,122 @@ class YandexCloudProvider {
         await this.initAwsSdkIfNeeded();
         const response = await this.ymq.listQueues().promise();
         const result = [];
+
         for (const url of (response.QueueUrls || [])) {
             result.push({
+                // eslint-disable-next-line no-await-in-loop
                 id: await this.getMessageQueueId(url),
                 name: this.parseQueueName(url),
                 url,
             });
         }
+
         return result;
     }
 
-    async createMessageQueue(request) {
+    async createMessageQueue(request: CreateMessageQueueRequest) {
         await this.initConnectionsIfNeeded();
         await this.initAwsSdkIfNeeded();
-        let response = await this.ymq.createQueue({QueueName: request.name}).promise();
-        const url = response.QueueUrl;
-        response = await this.ymq
-            .getQueueAttributes({
-                QueueUrl: url,
-                AttributeNames: ['QueueArn'],
-            })
+
+        const createResponse = await this.ymq.createQueue({ QueueName: request.name }).promise();
+
+        const url = createResponse.QueueUrl;
+
+        if (!url) {
+            throw new Error('Unable to get URL of created queue');
+        }
+
+        const getAttrsResponse = await this.ymq
+            .getQueueAttributes(
+                {
+                    QueueUrl: url,
+                    AttributeNames: ['QueueArn'],
+                },
+            )
             .promise();
 
         return {
             name: request.name,
-            id: response.Attributes.QueueArn,
+            id: getAttrsResponse.Attributes?.QueueArn,
             url,
         };
     }
 
-    async removeMessageQueue(url) {
+    async removeMessageQueue(url: string) {
         await this.initConnectionsIfNeeded();
         await this.initAwsSdkIfNeeded();
-        return this.ymq.deleteQueue({QueueUrl: url}).promise();
+
+        return this.ymq.deleteQueue({ QueueUrl: url }).promise();
     }
 
     async getS3Buckets() {
         await this.initConnectionsIfNeeded();
         await this.initAwsSdkIfNeeded();
         const response = await this.s3.listBuckets().promise();
-        return response.Buckets.map((b) => {
-            return {name: b.Name};
-        });
+
+        return response.Buckets?.map((b) => ({ name: b.Name })) || [];
     }
 
-    async createS3Bucket(request) {
+    async createS3Bucket(request: CreateS3BucketRequest) {
         await this.initConnectionsIfNeeded();
         await this.initAwsSdkIfNeeded();
-        return this.s3.createBucket({Bucket: request.name}).promise();
+
+        return this.s3.createBucket({ Bucket: request.name }).promise();
     }
 
-    async removeS3Bucket(name) {
+    async removeS3Bucket(name: string) {
         await this.initConnectionsIfNeeded();
         await this.initAwsSdkIfNeeded();
-        return this.s3.deleteBucket({Bucket: name}).promise();
+
+        return this.s3.deleteBucket({ Bucket: name }).promise();
     }
 
     async getContainerRegistries() {
         await this.initConnectionsIfNeeded();
         const result = [];
 
-        let nextPageToken = null;
+        let nextPageToken;
+
         do {
-            const response = await this.conatinerRegistryService.list({
+            // eslint-disable-next-line no-await-in-loop
+            const response: ListRegistriesResponse = await this.containerRegistryService.list({
                 folderId: this.folderId,
                 pageToken: nextPageToken,
             });
-            for (const registry of response.registries) {
-                result.push({
-                    name: registry.name,
-                    id: registry.id,
-                });
+
+            if (response.registries) {
+                for (const registry of response.registries) {
+                    result.push({
+                        name: registry.name,
+                        id: registry.id,
+                    });
+                }
             }
+
             nextPageToken = response.nextPageToken;
         } while (nextPageToken);
+
         return result;
     }
 
-    async createContainerRegistry(request) {
+    async createContainerRegistry(request: CreateContainerRegistryRequest) {
         await this.initConnectionsIfNeeded();
-        let operation = await this.conatinerRegistryService.create({
+        let operation = await this.containerRegistryService.create({
             folderId: this.folderId,
             name: request.name,
         });
+
         operation = await operation.completion(this.session);
+
         return {
             id: operation.getResponse().id,
             name: request.name,
         };
     }
 
-    async removeContainerRegistry(id) {
+    async removeContainerRegistry(id: string) {
         await this.initConnectionsIfNeeded();
-        return this.conatinerRegistryService.delete({registryId: id});
+
+        return this.containerRegistryService.delete({ registryId: id });
     }
 }
-
-module.exports = YandexCloudProvider;

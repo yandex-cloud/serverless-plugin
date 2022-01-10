@@ -23,7 +23,9 @@
   },
   "dependencies": {
     "aws-sdk": "^2.695.0",
+    "lodash": "^4.17.21",
     "log4js": "^6.3.0",
+    "long": "^5.2.0",
     "yaml": "^1.8.3",
     "yandex-cloud": "^1.4.3"
   },
@@ -31,6 +33,7 @@
     "@commitlint/cli": "^16.0.1",
     "@commitlint/config-conventional": "^16.0.0",
     "@semantic-release/git": "^10.0.1",
+    "@types/lodash": "^4.14.178",
     "@types/serverless": "^1.78.40",
     "eslint": "^8.5.0",
     "eslint-config-airbnb-base": "^15.0.0",

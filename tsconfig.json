@@ -10,7 +10,11 @@
     "strict": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "lib": ["es6", "ES2019.Object"]
+    "lib": ["es6", "ES2019.Object"],
+    "typeRoots": [
+      "./node_modules/@types",
+      "./src/types"
+    ]
   },
   "include": [
     "./src"
