@@ -35,7 +35,10 @@ import {
 
 import { getEnv } from '../utils/get-env';
 
-import 'yandex-cloud/lib/operation'; // side-effect, patches Operation
+import 'yandex-cloud/lib/operation';
+import {
+    FunctionInfo, MessageQueueInfo, S3BucketInfo, ServiceAccountInfo, TriggerInfo,
+} from '../types/common'; // side-effect, patches Operation
 
 const PROVIDER_NAME = 'yandex-cloud';
 
@@ -267,14 +270,13 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
         return operation.completion(this.session);
     }
 
-    async getTriggers() {
+    async getTriggers(): Promise<TriggerInfo[]> {
         await this.initConnectionsIfNeeded();
         const result = [];
 
         let nextPageToken;
 
         do {
-            // eslint-disable-next-line no-await-in-loop
             const responce: ListTriggersResponse = await this.triggers.list({
                 folderId: this.folderId,
                 pageToken: nextPageToken,
@@ -295,7 +297,7 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
         return result;
     }
 
-    async getServiceAccounts() {
+    async getServiceAccounts(): Promise<ServiceAccountInfo[]> {
         await this.initConnectionsIfNeeded();
         const access = await this.getAccessBindings();
 
@@ -303,7 +305,6 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
         let nextPageToken;
 
         do {
-            // eslint-disable-next-line no-await-in-loop
             const response: ListServiceAccountsResponse = await this.serviceAccounts.list({
                 folderId: this.folderId,
                 pageToken: nextPageToken,
@@ -322,6 +323,8 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
             nextPageToken = response.nextPageToken;
         } while (nextPageToken);
 
+        // TODO: remove it after migration to yandex-cloud@2.X
+        // @ts-ignore
         return result;
     }
 
@@ -332,7 +335,6 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
         let nextPageToken;
 
         do {
-            // eslint-disable-next-line no-await-in-loop
             const response: ListAccessBindingsResponse = await this.folders.listAccessBindings({
                 resourceId: this.folderId,
                 pageToken: nextPageToken,
@@ -417,14 +419,13 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
         return this.invokeService.invoke(id);
     }
 
-    async getFunctions() {
+    async getFunctions(): Promise<FunctionInfo[]> {
         await this.initConnectionsIfNeeded();
         const result = [];
 
         let nextPageToken;
 
         do {
-            // eslint-disable-next-line no-await-in-loop
             const response: ListFunctionsResponse = await this.functions.list({
                 folderId: this.folderId,
                 pageToken: nextPageToken,
@@ -498,7 +499,7 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
         return url.slice(url.lastIndexOf('/') + 1);
     }
 
-    async getMessageQueues() {
+    async getMessageQueues(): Promise<MessageQueueInfo[]> {
         await this.initConnectionsIfNeeded();
         await this.initAwsSdkIfNeeded();
         const response = await this.ymq.listQueues().promise();
@@ -506,7 +507,6 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
 
         for (const url of (response.QueueUrls || [])) {
             result.push({
-                // eslint-disable-next-line no-await-in-loop
                 id: await this.getMessageQueueId(url),
                 name: this.parseQueueName(url),
                 url,
@@ -551,7 +551,7 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
         return this.ymq.deleteQueue({ QueueUrl: url }).promise();
     }
 
-    async getS3Buckets() {
+    async getS3Buckets(): Promise<S3BucketInfo[]> {
         await this.initConnectionsIfNeeded();
         await this.initAwsSdkIfNeeded();
         const response = await this.s3.listBuckets().promise();
@@ -580,7 +580,6 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
         let nextPageToken;
 
         do {
-            // eslint-disable-next-line no-await-in-loop
             const response: ListRegistriesResponse = await this.containerRegistryService.list({
                 folderId: this.folderId,
                 pageToken: nextPageToken,

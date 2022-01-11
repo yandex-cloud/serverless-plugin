@@ -50,6 +50,7 @@
     "import/no-extraneous-dependencies": ["error", {
       "devDependencies": true
     }],
-    "import/no-cycle": "off"
+    "import/no-cycle": "off",
+    "no-await-in-loop": "off"
   }
 }

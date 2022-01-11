@@ -246,7 +246,6 @@ export class YandexCloudDeploy implements ServerlessPlugin {
             ...Object.values(this.functionRegistry),
             ...Object.values(this.triggerRegistry),
         ]) {
-            // eslint-disable-next-line no-await-in-loop
             await resource.sync();
         }
     }

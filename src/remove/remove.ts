@@ -1,12 +1,26 @@
-'use strict';
+import Serverless, { FunctionDefinition } from 'serverless';
+import ServerlessPlugin from 'serverless/classes/Plugin';
 
-const Trigger = require('../../entities/trigger');
+import { Trigger } from '../entities/trigger';
+import { YandexCloudProvider } from '../provider/provider';
+import {
+    FunctionInfo, MessageQueueInfo, S3BucketInfo, ServiceAccountInfo, TriggerInfo,
+} from '../types/common';
 
-class YandexCloudRemove {
-    constructor(serverless, options) {
+export class YandexCloudRemove implements ServerlessPlugin {
+    private readonly serverless: Serverless;
+    private readonly options: Serverless.Options;
+    private readonly provider: YandexCloudProvider;
+
+    hooks: ServerlessPlugin.Hooks;
+
+    private existingQueues: MessageQueueInfo[] | undefined = undefined;
+    private existingBuckets: S3BucketInfo[] | undefined = undefined;
+
+    constructor(serverless: Serverless, options: Serverless.Options) {
         this.serverless = serverless;
         this.options = options;
-        this.provider = this.serverless.getProvider('yandex-cloud');
+        this.provider = this.serverless.getProvider('yandex-cloud') as YandexCloudProvider;
 
         this.hooks = {
             'remove:remove': async () => {
@@ -15,38 +29,51 @@ class YandexCloudRemove {
         };
     }
 
-    async removeFunction(describedFunctionName, existingFunctions) {
+    async removeFunction(describedFunctionName: string, existingFunctions: FunctionInfo[]) {
         const functionFound = existingFunctions.find((func) => func.name === describedFunctionName);
+
         if (functionFound) {
+            // TODO: remove it after migration to yandex-cloud@2.X
+            // @ts-ignore
             await this.provider.removeFunction(functionFound.id);
+
             this.serverless.cli.log(`Function "${describedFunctionName}" removed`);
         } else {
             this.serverless.cli.log(`Function "${describedFunctionName}" not found`);
         }
     }
 
-    async removeTrigger(describedTriggerName, existingTriggers) {
+    async removeTrigger(describedTriggerName: string, existingTriggers: TriggerInfo[]) {
         const triggerFound = existingTriggers.find((trigger) => trigger.name === describedTriggerName);
+
         if (triggerFound) {
+            // TODO: remove it after migration to yandex-cloud@2.X
+            // @ts-ignore
             await this.provider.removeTrigger(triggerFound.id);
+
             this.serverless.cli.log(`Trigger "${describedTriggerName}" removed`);
         } else {
             this.serverless.cli.log(`Trigger "${describedTriggerName}" not found`);
         }
     }
 
-    async removeServiceAccount(describedSaName, existingAccounts) {
+    async removeServiceAccount(describedSaName: string, existingAccounts: ServiceAccountInfo[]) {
         const accFound = existingAccounts.find((acc) => acc.name === describedSaName);
+
         if (accFound) {
+            // TODO: remove it after migration to yandex-cloud@2.X
+            // @ts-ignore
             await this.provider.removeServiceAccount(accFound.id);
+
             this.serverless.cli.log(`Service account "${describedSaName}" removed`);
         } else {
             this.serverless.cli.log(`Service account "${describedSaName}" not found`);
         }
     }
 
-    async removeMessageQueue(describesQueueName, existingQueues) {
+    async removeMessageQueue(describesQueueName: string, existingQueues: MessageQueueInfo[]) {
         const found = existingQueues.find((q) => q.name === describesQueueName);
+
         if (found) {
             await this.provider.removeMessageQueue(found.url);
             this.serverless.cli.log(`Message queue "${describesQueueName}" removed`);
@@ -55,8 +82,9 @@ class YandexCloudRemove {
         }
     }
 
-    async removeS3Bucket(describesBucketName, existingBuckets) {
+    async removeS3Bucket(describesBucketName: string, existingBuckets: S3BucketInfo[]) {
         const found = existingBuckets.find((b) => b.name === describesBucketName);
+
         if (found) {
             await this.provider.removeS3Bucket(describesBucketName);
             this.serverless.cli.log(`S3 bucket "${describesBucketName}" removed`);
@@ -69,6 +97,7 @@ class YandexCloudRemove {
         if (!this.existingQueues) {
             this.existingQueues = await this.provider.getMessageQueues();
         }
+
         return this.existingQueues;
     }
 
@@ -76,6 +105,7 @@ class YandexCloudRemove {
         if (!this.existingBuckets) {
             this.existingBuckets = await this.provider.getS3Buckets();
         }
+
         return this.existingBuckets;
     }
 
@@ -87,31 +117,33 @@ class YandexCloudRemove {
 
         for (const descFunc of Object.values(describedFunctions || [])) {
             for (const triggerType of Trigger.supportedTriggers()) {
-                await this.removeTrigger(`${descFunc.name}-${triggerType}`, existingTriggers);
+                this.removeTrigger(`${descFunc.name}-${triggerType}`, existingTriggers);
             }
-            await this.removeFunction(descFunc.name, existingFunctions);
+
+            if (descFunc.name) {
+                this.removeFunction(descFunc.name, existingFunctions);
+            }
         }
         for (const [name, params] of Object.entries(this.serverless.service.resources || [])) {
             try {
+                // eslint-disable-next-line default-case
                 switch (params.type) {
                     case 'yc::MessageQueue':
-                        await this.removeMessageQueue(name, await this.getMessageQueuesCached());
+                        this.removeMessageQueue(name, await this.getMessageQueuesCached());
                         break;
                     case 'yc::ObjectStorageBucket':
-                        await this.removeS3Bucket(name, await this.getS3BucketsCached());
+                        this.removeS3Bucket(name, await this.getS3BucketsCached());
                         break;
                 }
-            } catch (e) {
-                this.serverless.cli.log(`${e} Maybe you should set AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY environment variables`);
+            } catch (error) {
+                this.serverless.cli.log(`${error} Maybe you should set AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY environment variables`);
             }
         }
 
         for (const [name, params] of Object.entries(this.serverless.service.resources || [])) {
             if (params.type === 'yc::ServiceAccount') {
-                await this.removeServiceAccount(name, existingAccounts);
+                this.removeServiceAccount(name, existingAccounts);
             }
         }
     }
 }
-
-module.exports = YandexCloudRemove;

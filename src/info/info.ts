@@ -5,19 +5,17 @@ import { ServiceAccount } from 'yandex-cloud/api/iam/v1';
 import { Trigger } from '../entities/trigger';
 import { YandexCloudProvider } from '../provider/provider';
 import { logger } from '../utils/logger';
-
-interface Entity {
-    id?: string;
-    name?: string;
-}
+import {
+    FunctionInfo, MessageQueueInfo, S3BucketInfo, TriggerInfo,
+} from '../types/common';
 
 export class YandexCloudInfo implements ServerlessPlugin {
     private readonly serverless: Serverless;
     private readonly options: Serverless.Options;
 
     private provider: YandexCloudProvider;
-    private existingQueues: { id?: string; name?: string; url: string }[] | undefined = undefined;
-    private existingBuckets: { name?: string }[] | undefined = undefined;
+    private existingQueues: MessageQueueInfo[] | undefined = undefined;
+    private existingBuckets: S3BucketInfo[] | undefined = undefined;
 
     hooks: ServerlessPlugin.Hooks;
 
@@ -49,7 +47,7 @@ export class YandexCloudInfo implements ServerlessPlugin {
         }
     }
 
-    messageQueueInfo(name: string, params: unknown, currentQueues: Entity[]) {
+    messageQueueInfo(name: string, params: unknown, currentQueues: MessageQueueInfo[]) {
         const queue = currentQueues.find((item) => item.name === name);
 
         if (queue) {
@@ -59,7 +57,7 @@ export class YandexCloudInfo implements ServerlessPlugin {
         }
     }
 
-    objectStorageInfo(name: string, params: unknown, currentBuckets: Entity[]) {
+    objectStorageInfo(name: string, params: unknown, currentBuckets: S3BucketInfo[]) {
         const bucket = currentBuckets.find((item) => item.name === name);
 
         if (bucket) {
@@ -69,7 +67,7 @@ export class YandexCloudInfo implements ServerlessPlugin {
         }
     }
 
-    triggersInfo(func: string, params: FunctionDefinition, currentTriggers: Entity[]) {
+    triggersInfo(func: string, params: FunctionDefinition, currentTriggers: TriggerInfo[]) {
         for (const event of Object.values(params.events || [])) {
             const normalized = Trigger.normalizeEvent(event);
 
@@ -88,7 +86,7 @@ export class YandexCloudInfo implements ServerlessPlugin {
         }
     }
 
-    functionInfo(name: string, params: FunctionDefinition, currentFunctions: Entity[], currentTriggers: Entity[]) {
+    functionInfo(name: string, params: FunctionDefinition, currentFunctions: FunctionInfo[], currentTriggers: TriggerInfo[]) {
         const func = currentFunctions.find((currFunc) => currFunc.name === params.name);
 
         if (func) {
@@ -128,11 +126,9 @@ export class YandexCloudInfo implements ServerlessPlugin {
                 // eslint-disable-next-line default-case
                 switch (value.type) {
                     case 'yc::MessageQueue':
-                        // eslint-disable-next-line no-await-in-loop
                         this.messageQueueInfo(key, value, await this.getMessageQueuesCached());
                         break;
                     case 'yc::ObjectStorageBucket':
-                        // eslint-disable-next-line no-await-in-loop
                         this.objectStorageInfo(key, value, await this.getS3BucketsCached());
                         break;
                 }
@@ -145,8 +141,7 @@ export class YandexCloudInfo implements ServerlessPlugin {
 
         for (const [key, value] of Object.entries(this.serverless.service.resources || [])) {
             if (value.type === 'yc::ServiceAccount') {
-                // eslint-disable-next-line no-await-in-loop
-                await this.serviceAccountInfo(key, value, currentServiceAccounts);
+                this.serviceAccountInfo(key, value, currentServiceAccounts);
             }
         }
     }
