@@ -1,7 +1,4 @@
 import yc from 'yandex-cloud';
-import yaml from 'yaml';
-import fs from 'fs';
-import path from 'path';
 import Serverless from 'serverless';
 import ServerlessPlugin from 'serverless/classes/Plugin';
 import ServerlessAwsProvider from 'serverless/plugins/aws/provider/awsProvider';
@@ -33,40 +30,14 @@ import {
     UpdateFunctionRequest,
 } from './types';
 
-import { getEnv } from '../utils/get-env';
-
-import 'yandex-cloud/lib/operation';
 import {
     FunctionInfo, MessageQueueInfo, S3BucketInfo, ServiceAccountInfo, TriggerInfo,
-} from '../types/common'; // side-effect, patches Operation
+} from '../types/common';
+import { readCliConfig, fileToBase64 } from './helpers';
+
+import 'yandex-cloud/lib/operation'; // side-effect, patches Operation
 
 const PROVIDER_NAME = 'yandex-cloud';
-
-const readCliConfig = () => {
-    const configFile = path.join(getEnv('HOME'), '.config/yandex-cloud/config.yaml');
-
-    let config;
-
-    try {
-        config = yaml.parse(fs.readFileSync(configFile, 'utf8'));
-    } catch (error) {
-        throw new Error(`Failed to read config ${configFile}: ${error}`);
-    }
-
-    const { current, profiles } = config;
-
-    if (!current) {
-        throw new Error(`Invalid config in ${configFile}: no current profile selected`);
-    }
-
-    if (!profiles[current]) {
-        throw new Error(`Invalid config in ${configFile}: no profile named ${current} exists`);
-    }
-
-    return profiles[current];
-};
-
-const fileToBase64 = (filePath: string) => fs.readFileSync(filePath, 'base64');
 
 export class YandexCloudProvider extends ServerlessAwsProvider implements ServerlessPlugin {
     hooks: ServerlessPlugin.Hooks;
