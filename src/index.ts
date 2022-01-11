@@ -3,7 +3,7 @@ import Serverless from 'serverless';
 import { YandexCloudProvider } from './provider/provider';
 import { YandexCloudDeploy } from './deploy/deploy';
 import YandexCloudRemove from './lib/remove/remove';
-import YandexCloudInvoke from './lib/invoke/invoke';
+import { YandexCloudInvoke } from './invoke/invoke';
 import { YandexCloudInfo } from './info/info';
 
 export default class YandexCloudServerlessPlugin {
