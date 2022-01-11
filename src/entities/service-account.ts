@@ -36,17 +36,12 @@ export class ServiceAccount {
             return;
         }
 
-        if (!this.initialState?.id) {
-            this.serverless.cli.log('Service account id is not defined');
-
-            return;
-        }
-
         if (this.initialState) {
             if (
-                this.initialState.roles
+                (this.initialState.roles
                 && this.initialState.roles.length === this.newState.params?.roles.length
-                && this.initialState.roles.every((ir) => this.newState?.params?.roles.find((nr) => nr === ir))
+                && this.initialState.roles.every((ir) => this.newState?.params?.roles.find((nr) => nr === ir)))
+                || !this.initialState?.id
             ) {
                 return;
             }

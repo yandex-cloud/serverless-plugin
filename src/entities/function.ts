@@ -42,7 +42,7 @@ export class YCFunction {
             return result;
         }
         for (const [k, v] of Object.entries(environment)) {
-            if (!/^[A-Za-z]\\w*$/.test(k)) {
+            if (!/^[A-Za-z]\w*$/.test(k)) {
                 this.serverless.cli.log(`Environment variable "${k}" name does not match with "[a-zA-Z][a-zA-Z0-9_]*"`);
                 result = false;
             }
@@ -73,27 +73,27 @@ export class YCFunction {
             return;
         }
 
-        if (!this.initialState?.id) {
-            this.serverless.cli.log('Function id is not defined');
-
-            return;
-        }
-
         if (!this.serverless.service.provider.runtime) {
             this.serverless.cli.log('Provider\'s runtime is not defined');
 
             return;
         }
 
-        const requestParams = {
-            ...this.newState.params,
-            runtime: this.serverless.service.provider.runtime,
-            code: this.serverless.service.package.artifact,
-            id: this.initialState?.id,
-            serviceAccount: this.deploy.getServiceAccountId(this.newState.params.account),
-        };
-
         if (this.initialState) {
+            if (!this.initialState?.id) {
+                this.serverless.cli.log('Function id is not defined');
+
+                return;
+            }
+
+            const requestParams = {
+                ...this.newState.params,
+                runtime: this.serverless.service.provider.runtime,
+                code: this.serverless.service.package.artifact,
+                id: this.initialState?.id,
+                serviceAccount: this.deploy.getServiceAccountId(this.newState.params.account),
+            };
+
             try {
                 await provider.updateFunction(requestParams);
                 this.serverless.cli.log(`Function updated\n${this.newState.name}: ${requestParams.name}`);
@@ -106,6 +106,12 @@ export class YCFunction {
         }
 
         try {
+            const requestParams = {
+                ...this.newState.params,
+                runtime: this.serverless.service.provider.runtime,
+                code: this.serverless.service.package.artifact,
+                serviceAccount: this.deploy.getServiceAccountId(this.newState.params.account),
+            };
             const response = await provider.createFunction(requestParams);
 
             this.id = response.id;

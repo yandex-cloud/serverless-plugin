@@ -91,13 +91,13 @@ export class Trigger {
     }
 
     async sync() {
-        if (!this.initialState?.id) {
-            this.serverless.cli.log('Trigger id is not defined');
-
-            return;
-        }
-
         if (!this.newState) {
+            if (!this.initialState?.id) {
+                this.serverless.cli.log('Trigger id is not defined');
+
+                return;
+            }
+
             try {
                 await this.provider.removeTrigger(this.initialState.id);
 
@@ -110,6 +110,12 @@ export class Trigger {
         }
 
         if (this.initialState) {
+            if (!this.initialState?.id) {
+                this.serverless.cli.log('Trigger id is not defined');
+
+                return;
+            }
+
             try {
                 await this.provider.removeTrigger(this.initialState.id);
                 this.serverless.cli.log(`Trigger removed "${this.initialState.name}"`);
@@ -205,6 +211,6 @@ export class Trigger {
         const foundTriggerType = Trigger.supportedTriggers().find((type) => event[type]);
 
         // @ts-ignore
-        return foundTriggerType && event[foundTriggerType];
+        return foundTriggerType && { type: foundTriggerType, params: event[foundTriggerType] };
     }
 }
