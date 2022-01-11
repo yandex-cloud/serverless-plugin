@@ -5,6 +5,7 @@ import { YandexCloudDeploy } from './deploy/deploy';
 import { YandexCloudRemove } from './remove/remove';
 import { YandexCloudInvoke } from './invoke/invoke';
 import { YandexCloudInfo } from './info/info';
+import { YandexCloudLogs } from './logs/logs';
 
 export default class YandexCloudServerlessPlugin {
     private readonly serverless: Serverless;
@@ -19,5 +20,6 @@ export default class YandexCloudServerlessPlugin {
         this.serverless.pluginManager.addPlugin(YandexCloudRemove);
         this.serverless.pluginManager.addPlugin(YandexCloudInvoke);
         this.serverless.pluginManager.addPlugin(YandexCloudInfo);
+        this.serverless.pluginManager.addPlugin(YandexCloudLogs);
     }
 }
