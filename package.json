@@ -33,6 +33,7 @@
     "@commitlint/cli": "^16.0.1",
     "@commitlint/config-conventional": "^16.0.0",
     "@semantic-release/git": "^10.0.1",
+    "@types/jest": "^27.4.0",
     "@types/lodash": "^4.14.178",
     "@types/serverless": "^1.78.40",
     "eslint": "^8.5.0",
@@ -44,6 +45,8 @@
     "husky": "^7.0.4",
     "jest": "^27.4.5",
     "semantic-release": "^18.0.1",
+    "ts-jest": "^27.1.2",
+    "ts-node": "^10.4.0",
     "typescript": "^4.5.4"
   },
   "peerDependencies": {
@@ -51,7 +54,7 @@
   },
   "scripts": {
     "build": "tsc -p .",
-    "test": "jest",
+    "test": "jest -c config/jest.ts",
     "lint": "eslint src",
     "prepare": "husky install",
     "prepublishOnly": "npm run build"
