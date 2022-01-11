@@ -252,10 +252,10 @@ export class YandexCloudDeploy implements ServerlessPlugin {
 
     async deploy() {
         const described = this.getNeedDeployFunctions();
+        const funcName = this.options[functionOption];
 
-        if (this.options[functionOption] && size(described) === 1) {
-            // TODO: Figure out reason of this 'if' and get rid of this
-            return this.deployService(pick(described, Object.keys(described)[0]));
+        if (funcName) {
+            return this.deployService(pick(described, funcName));
         }
 
         return this.deployService(described);
