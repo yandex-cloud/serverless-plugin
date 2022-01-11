@@ -2,12 +2,12 @@ import ServerlessPlugin from 'serverless/classes/Plugin';
 import Serverless from 'serverless';
 import { size, pick } from 'lodash';
 
-import YCFunction from '../lib/entities/function';
-import Trigger from '../lib/entities/trigger';
-import ServiceAccount from '../lib/entities/serviceAccount';
-import MessageQueue from '../lib/entities/messageQueue';
-import ObjectStorage from '../lib/entities/objectStorage';
-import ContainerRegistry from '../lib/entities/containerRegistry';
+import { YCFunction } from '../entities/function';
+import { Trigger } from '../entities/trigger';
+import { ServiceAccount } from '../entities/service-account';
+import { MessageQueue } from '../entities/message-queue';
+import { ObjectStorage } from '../entities/object-storage';
+import { ContainerRegistry } from '../entities/container-registry';
 import { YandexCloudProvider } from '../provider/provider';
 import { logger } from '../utils/logger';
 
@@ -87,12 +87,16 @@ export class YandexCloudDeploy implements ServerlessPlugin {
         for (const [name, func] of Object.entries(describedFunctions)) {
             if (func.name && Object.keys(this.functionRegistry).includes(func.name)) {
                 this.functionRegistry[func.name].setNewState({
+                    // TODO: remove it after migration to yandex-cloud@2.X
+                    // @ts-ignore
                     params: func,
                     name,
                 });
             } else if (func.name) {
                 this.functionRegistry[func.name] = new YCFunction(this.serverless, this);
                 this.functionRegistry[func.name].setNewState({
+                    // TODO: remove it after migration to yandex-cloud@2.X
+                    // @ts-ignore
                     params: func,
                     name,
                 });
@@ -111,6 +115,8 @@ export class YandexCloudDeploy implements ServerlessPlugin {
             });
 
             if (found) {
+                // TODO: remove it after migration to yandex-cloud@2.X
+                // @ts-ignore
                 this.triggerRegistry[trigger.name] = new Trigger(this.serverless, this, trigger);
             }
         }
@@ -179,6 +185,8 @@ export class YandexCloudDeploy implements ServerlessPlugin {
 
         try {
             for (const queue of await this.provider.getMessageQueues()) {
+                // TODO: remove it after migration to yandex-cloud@2.X
+                // @ts-ignore
                 this.messageQueueRegistry[queue.name] = new MessageQueue(this.serverless, queue);
             }
             for (const [name, params] of Object.entries(this.serverless.service.resources || [])) {
@@ -202,6 +210,8 @@ export class YandexCloudDeploy implements ServerlessPlugin {
 
             for (const bucket of await this.provider.getS3Buckets()) {
                 if (bucket.name) {
+                    // TODO: remove it after migration to yandex-cloud@2.X
+                    // @ts-ignore
                     this.objectStorageRegistry[bucket.name] = new ObjectStorage(this.serverless, bucket);
                 }
             }

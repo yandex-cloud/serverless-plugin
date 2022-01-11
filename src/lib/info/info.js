@@ -1,6 +1,6 @@
 'use strict';
 
-const Trigger = require('../entities/trigger');
+const Trigger = require('../../entities/trigger');
 
 class YandexCloudInfo {
     constructor(serverless, options) {
