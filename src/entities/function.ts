@@ -2,17 +2,16 @@ import Serverless from 'serverless';
 
 import { YandexCloudProvider } from '../provider/provider';
 import { YandexCloudDeploy } from '../deploy/deploy';
-import { UpdateFunctionRequest } from '../provider/types';
-
-interface FunctionStateParams extends UpdateFunctionRequest {
-    name: string;
-    account: string;
-}
+import { ServerlessFunc } from '../types/common';
 
 interface FunctionState {
-    id?: string;
+    id: string;
     name: string;
-    params: FunctionStateParams
+}
+
+interface FunctionNewState {
+    params: ServerlessFunc
+    name: string;
 }
 
 export class YCFunction {
@@ -20,7 +19,7 @@ export class YCFunction {
     private readonly deploy: YandexCloudDeploy;
     private readonly initialState?: FunctionState;
 
-    private newState?: FunctionState;
+    private newState?: FunctionNewState;
 
     public id?: string;
 
@@ -31,7 +30,7 @@ export class YCFunction {
         this.id = initial?.id;
     }
 
-    setNewState(newState: FunctionState) {
+    setNewState(newState: FunctionNewState) {
         this.newState = newState;
     }
 
@@ -80,22 +79,18 @@ export class YCFunction {
         }
 
         if (this.initialState) {
-            if (!this.initialState?.id) {
-                this.serverless.cli.log('Function id is not defined');
-
-                return;
-            }
-
             const requestParams = {
                 ...this.newState.params,
                 runtime: this.serverless.service.provider.runtime,
                 code: this.serverless.service.package.artifact,
-                id: this.initialState?.id,
+                id: this.initialState.id,
                 serviceAccount: this.deploy.getServiceAccountId(this.newState.params.account),
+                memory: this.newState.params.memorySize,
             };
 
             try {
                 await provider.updateFunction(requestParams);
+
                 this.serverless.cli.log(`Function updated\n${this.newState.name}: ${requestParams.name}`);
             } catch (error) {
                 this.serverless.cli.log(`${error}\nFailed to update function

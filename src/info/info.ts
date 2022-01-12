@@ -1,12 +1,11 @@
 import Serverless, { FunctionDefinition } from 'serverless';
 import ServerlessPlugin from 'serverless/classes/Plugin';
 
-import { ServiceAccount } from 'yandex-cloud/api/iam/v1';
 import { Trigger } from '../entities/trigger';
 import { YandexCloudProvider } from '../provider/provider';
 import { logger } from '../utils/logger';
 import {
-    FunctionInfo, MessageQueueInfo, S3BucketInfo, TriggerInfo,
+    FunctionInfo, MessageQueueInfo, S3BucketInfo, ServiceAccountInfo, TriggerInfo,
 } from '../types/common';
 
 export class YandexCloudInfo implements ServerlessPlugin {
@@ -37,7 +36,7 @@ export class YandexCloudInfo implements ServerlessPlugin {
         };
     }
 
-    serviceAccountInfo(name: string, params: unknown, currentAccounts: ServiceAccount[]) {
+    serviceAccountInfo(name: string, params: unknown, currentAccounts: ServiceAccountInfo[]) {
         const acc = currentAccounts.find((item) => item.name === name);
 
         if (acc) {

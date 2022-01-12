@@ -13,8 +13,8 @@ export interface UpdateFunctionRequest {
     id: string;
     runtime: string;
     handler: string;
-    memory: number;
-    timeout: number;
+    memory?: number;
+    timeout?: number;
     serviceAccount?: string;
     code: string;
     environment?: Record<string, string>;

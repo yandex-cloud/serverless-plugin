@@ -1,6 +1,6 @@
 import ServerlessPlugin from 'serverless/classes/Plugin';
 import Serverless from 'serverless';
-import { size, pick } from 'lodash';
+import { pick } from 'lodash';
 
 import { YCFunction } from '../entities/function';
 import { Trigger } from '../entities/trigger';
@@ -10,8 +10,7 @@ import { ObjectStorage } from '../entities/object-storage';
 import { ContainerRegistry } from '../entities/container-registry';
 import { YandexCloudProvider } from '../provider/provider';
 import { logger } from '../utils/logger';
-
-type ServerlessFunc = Serverless.FunctionDefinitionHandler | Serverless.FunctionDefinitionImage;
+import { ServerlessFunc } from '../types/common';
 
 const functionOption = 'function';
 
@@ -72,31 +71,27 @@ export class YandexCloudDeploy implements ServerlessPlugin {
     }
 
     getNeedDeployFunctions() {
+        const yFunctions = this.serverless.service.functions as unknown as Record<string, ServerlessFunc>;
+
         return Object.fromEntries(
-            Object.entries(this.serverless.service.functions)
+            Object.entries(yFunctions)
                 .filter(([k, _]) => !this.options[functionOption] || this.options[functionOption] === k),
         );
     }
 
     async deployService(describedFunctions: Record<string, ServerlessFunc>) {
         for (const func of await this.provider.getFunctions()) {
-            // TODO: remove it after migration to yandex-cloud@2.X
-            // @ts-ignore
             this.functionRegistry[func.name] = new YCFunction(this.serverless, this, func);
         }
         for (const [name, func] of Object.entries(describedFunctions)) {
             if (func.name && Object.keys(this.functionRegistry).includes(func.name)) {
                 this.functionRegistry[func.name].setNewState({
-                    // TODO: remove it after migration to yandex-cloud@2.X
-                    // @ts-ignore
                     params: func,
                     name,
                 });
             } else if (func.name) {
                 this.functionRegistry[func.name] = new YCFunction(this.serverless, this);
                 this.functionRegistry[func.name].setNewState({
-                    // TODO: remove it after migration to yandex-cloud@2.X
-                    // @ts-ignore
                     params: func,
                     name,
                 });

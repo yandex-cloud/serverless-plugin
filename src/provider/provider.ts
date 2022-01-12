@@ -1,21 +1,12 @@
-import yc from 'yandex-cloud';
+import {
+    cloudApi, serviceClients, Session, WrappedServiceClientType, waitForOperation, decodeMessage,
+} from 'yandex-cloud';
 import Serverless from 'serverless';
 import ServerlessPlugin from 'serverless/classes/Plugin';
 import ServerlessAwsProvider from 'serverless/plugins/aws/provider/awsProvider';
 import AWS from 'aws-sdk';
-import long from 'long';
-import { FunctionService, ListFunctionsResponse } from 'yandex-cloud/api/serverless/functions/v1';
-import {
-    InvokeFunctionWithRetry,
-    ListTriggersResponse,
-    Trigger,
-    TriggerService,
-} from 'yandex-cloud/api/serverless/triggers/v1';
-import { ListServiceAccountsResponse, ServiceAccountService } from 'yandex-cloud/api/iam/v1';
-import { FolderService } from 'yandex-cloud/api/resourcemanager/v1';
-import { AccessBindingAction, ListAccessBindingsResponse } from 'yandex-cloud/api/access';
-import { InvokeService } from 'yandex-cloud/lib/serverless/functions/v1/invoke';
-import { ListRegistriesResponse, RegistryService } from 'yandex-cloud/api/containerregistry/v1';
+import axios from 'axios';
+import * as lodash from 'lodash';
 import {
     CreateContainerRegistryRequest,
     CreateCronTriggerRequest,
@@ -35,9 +26,19 @@ import {
 } from '../types/common';
 import { readCliConfig, fileToBase64 } from './helpers';
 
-import 'yandex-cloud/lib/operation'; // side-effect, patches Operation
-
 const PROVIDER_NAME = 'yandex-cloud';
+
+const {
+    containerregistry: { registry_service: CloudApiRegistryService },
+    serverless: {
+        functions_function_service: CloudApiFunctionsService,
+        triggers_trigger_service: CloudApiTriggersService,
+        triggers_trigger: CloudApiTriggers,
+    },
+    iam: { service_account_service: CloudApiServiceAccountService },
+    access: { access: CloudApiAccess },
+    resourcemanager: { folder_service: CloudApiFolderService },
+} = cloudApi;
 
 export class YandexCloudProvider extends ServerlessAwsProvider implements ServerlessPlugin {
     hooks: ServerlessPlugin.Hooks;
@@ -48,15 +49,14 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
     private readonly options: Serverless.Options;
 
     // TODO: get rid of non-null assertion
-    private session!: yc.Session;
+    private session!: Session;
     private folderId!: string;
     private cloudId!: string;
-    private triggers!: TriggerService;
-    private serviceAccounts!: ServiceAccountService;
-    private functions!: FunctionService;
-    private folders!: FolderService;
-    private invokeService!: InvokeService;
-    private containerRegistryService!: RegistryService;
+    private triggers!: WrappedServiceClientType<typeof serviceClients.TriggerServiceClient.service>;
+    private serviceAccounts!: WrappedServiceClientType<typeof serviceClients.ServiceAccountServiceClient.service>;
+    private functions!: WrappedServiceClientType<typeof serviceClients.FunctionServiceClient.service>;
+    private folders!: WrappedServiceClientType<typeof serviceClients.FolderServiceClient.service>;
+    private containerRegistryService!: WrappedServiceClientType<typeof serviceClients.RegistryServiceClient.service>;
     private ymq!: AWS.SQS;
     private s3!: AWS.S3;
 
@@ -78,22 +78,20 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
             return;
         }
         const config = readCliConfig();
-        const session = new yc.Session({ oauthToken: config.token });
 
-        if (config.endpoint) {
+        /* if (config.endpoint) {
             await session.setEndpoint(config.endpoint);
-        }
+        } */
 
-        this.session = session;
+        this.session = new Session({ oauthToken: config.token });
         this.folderId = config['folder-id'];
         this.cloudId = config['cloud-id'];
 
-        this.triggers = new TriggerService(this.session);
-        this.serviceAccounts = new ServiceAccountService(this.session);
-        this.functions = new FunctionService(this.session);
-        this.folders = new FolderService(this.session);
-        this.invokeService = new InvokeService(this.session);
-        this.containerRegistryService = new RegistryService(this.session);
+        this.triggers = this.session.client(serviceClients.TriggerServiceClient);
+        this.serviceAccounts = this.session.client(serviceClients.ServiceAccountServiceClient);
+        this.functions = this.session.client(serviceClients.FunctionServiceClient);
+        this.folders = this.session.client(serviceClients.FolderServiceClient);
+        this.containerRegistryService = this.session.client(serviceClients.RegistryServiceClient);
     }
 
     async initAwsSdkIfNeeded() {
@@ -116,15 +114,15 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
         });
     }
 
-    makeInvokeFunctionWithRetryParams(request: InvokeFunctionRequest): InvokeFunctionWithRetry {
+    makeInvokeFunctionWithRetryParams(request: InvokeFunctionRequest) {
         return {
             functionId: request.functionId,
             serviceAccountId: request.serviceAccount,
             retrySettings: request.retry
                 ? {
-                    retryAttempts: long.fromNumber(request.retry.attempts),
+                    retryAttempts: request.retry.attempts,
                     interval: {
-                        seconds: long.fromNumber(request.retry.interval),
+                        seconds: request.retry.interval,
                     },
                 }
                 : undefined,
@@ -139,7 +137,8 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
 
     async createCronTrigger(request: CreateCronTriggerRequest) {
         await this.initConnectionsIfNeeded();
-        const operation = await this.triggers.create({
+
+        const operation = await this.triggers.create(CloudApiTriggersService.CreateTriggerRequest.fromPartial({
             folderId: this.folderId,
             name: request.name,
             rule: {
@@ -148,49 +147,49 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
                     invokeFunctionWithRetry: this.makeInvokeFunctionWithRetryParams(request),
                 },
             },
-        });
+        }));
 
-        return operation.completion(this.session);
+        return waitForOperation(operation, this.session);
     }
 
     convertS3EvenType(type: string) {
         return {
-            'create.object': Trigger.ObjectStorageEventType.OBJECT_STORAGE_EVENT_TYPE_CREATE_OBJECT,
-            'delete.object': Trigger.ObjectStorageEventType.OBJECT_STORAGE_EVENT_TYPE_DELETE_OBJECT,
-            'update.object': Trigger.ObjectStorageEventType.OBJECT_STORAGE_EVENT_TYPE_UPDATE_OBJECT,
+            'create.object': CloudApiTriggers.Trigger_ObjectStorageEventType.OBJECT_STORAGE_EVENT_TYPE_CREATE_OBJECT,
+            'delete.object': CloudApiTriggers.Trigger_ObjectStorageEventType.OBJECT_STORAGE_EVENT_TYPE_DELETE_OBJECT,
+            'update.object': CloudApiTriggers.Trigger_ObjectStorageEventType.OBJECT_STORAGE_EVENT_TYPE_UPDATE_OBJECT,
         }[type];
     }
 
     async createS3Trigger(request: CreateS3TriggerRequest) {
         await this.initConnectionsIfNeeded();
 
-        const operation = await this.triggers.create({
+        const operation = await this.triggers.create(CloudApiTriggersService.CreateTriggerRequest.fromPartial({
             folderId: this.folderId,
             name: request.name,
             rule: {
                 objectStorage: {
-                    eventType: request.events.map((type) => this.convertS3EvenType(type.toLowerCase())),
+                    eventType: lodash.compact(request.events.map((type) => this.convertS3EvenType(type.toLowerCase()))),
                     bucketId: request.bucket,
                     prefix: request.prefix,
                     suffix: request.suffix,
                     invokeFunction: this.makeInvokeFunctionWithRetryParams(request),
                 },
             },
-        });
+        }));
 
-        return operation.completion(this.session);
+        return waitForOperation(operation, this.session);
     }
 
     async createYMQTrigger(request: CreateYmqTriggerRequest) {
         await this.initConnectionsIfNeeded();
-        const operation = await this.triggers.create({
+
+        const operation = await this.triggers.create(CloudApiTriggersService.CreateTriggerRequest.fromPartial({
             folderId: this.folderId,
             name: request.name,
             rule: {
                 messageQueue: {
                     queueId: request.queueId,
                     serviceAccountId: request.queueServiceAccount,
-                    suffix: request.suffix,
                     batchSettings: {
                         size: request.batch,
                         cutoff: { seconds: request.cutoff },
@@ -201,44 +200,49 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
                     },
                 },
             },
-        });
+        }));
 
-        return operation.completion(this.session);
+        return waitForOperation(operation, this.session);
     }
 
     convertCREventType(type: string) {
         return {
-            'create.image': Trigger.ContainerRegistryEventType.CONTAINER_REGISTRY_EVENT_TYPE_CREATE_IMAGE,
-            'delete.image': Trigger.ContainerRegistryEventType.CONTAINER_REGISTRY_EVENT_TYPE_DELETE_IMAGE,
-            'create.image-tag': Trigger.ContainerRegistryEventType.CONTAINER_REGISTRY_EVENT_TYPE_CREATE_IMAGE_TAG,
-            'delete.image-tag': Trigger.ContainerRegistryEventType.CONTAINER_REGISTRY_EVENT_TYPE_DELETE_IMAGE_TAG,
+            'create.image': CloudApiTriggers.Trigger_ContainerRegistryEventType.CONTAINER_REGISTRY_EVENT_TYPE_CREATE_IMAGE,
+            'delete.image': CloudApiTriggers.Trigger_ContainerRegistryEventType.CONTAINER_REGISTRY_EVENT_TYPE_DELETE_IMAGE,
+            'create.image-tag': CloudApiTriggers.Trigger_ContainerRegistryEventType.CONTAINER_REGISTRY_EVENT_TYPE_CREATE_IMAGE_TAG,
+            'delete.image-tag': CloudApiTriggers.Trigger_ContainerRegistryEventType.CONTAINER_REGISTRY_EVENT_TYPE_DELETE_IMAGE_TAG,
         }[type];
     }
 
     async createCRTrigger(request: CreateCrTriggerRequest) {
         await this.initConnectionsIfNeeded();
-        const operation = await this.triggers.create({
+
+        const operation = await this.triggers.create(CloudApiTriggersService.CreateTriggerRequest.fromPartial({
             folderId: this.folderId,
             name: request.name,
             rule: {
                 containerRegistry: {
-                    eventType: request.events.map((type) => this.convertCREventType(type.toLowerCase())),
+                    eventType: lodash.compact(request.events
+                        .map((type) => this.convertCREventType(type.toLowerCase()))),
                     registryId: request.registryId,
                     imageName: request.imageName,
                     tag: request.tag,
                     invokeFunction: this.makeInvokeFunctionWithRetryParams(request),
                 },
             },
-        });
+        }));
 
-        return operation.completion(this.session);
+        return waitForOperation(operation, this.session);
     }
 
     async removeTrigger(id: string) {
         await this.initConnectionsIfNeeded();
-        const operation = await this.triggers.delete({ triggerId: id });
 
-        return operation.completion(this.session);
+        const operation = await this.triggers.delete(CloudApiTriggersService.DeleteTriggerRequest.fromPartial({
+            triggerId: id,
+        }));
+
+        return waitForOperation(operation, this.session);
     }
 
     async getTriggers(): Promise<TriggerInfo[]> {
@@ -247,14 +251,18 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
 
         let nextPageToken;
 
-        do {
-            const responce: ListTriggersResponse = await this.triggers.list({
-                folderId: this.folderId,
-                pageToken: nextPageToken,
-            });
+        type ListTriggersResponse = cloudApi.serverless.triggers_trigger_service.ListTriggersResponse;
 
-            if (responce.triggers) {
-                for (const trigger of responce.triggers) {
+        do {
+            const response: ListTriggersResponse = await this.triggers.list(
+                CloudApiTriggersService.ListTriggersRequest.fromPartial({
+                    folderId: this.folderId,
+                    pageToken: nextPageToken,
+                }),
+            );
+
+            if (response.triggers) {
+                for (const trigger of response.triggers) {
                     result.push({
                         name: trigger.name,
                         id: trigger.id,
@@ -262,7 +270,7 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
                 }
             }
 
-            nextPageToken = responce.nextPageToken;
+            nextPageToken = response.nextPageToken;
         } while (nextPageToken);
 
         return result;
@@ -275,11 +283,15 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
         const result = [];
         let nextPageToken;
 
+        type ListServiceAccountsResponse = cloudApi.iam.service_account_service.ListServiceAccountsResponse;
+
         do {
-            const response: ListServiceAccountsResponse = await this.serviceAccounts.list({
-                folderId: this.folderId,
-                pageToken: nextPageToken,
-            });
+            const response: ListServiceAccountsResponse = await this.serviceAccounts.list(
+                CloudApiServiceAccountService.ListServiceAccountsRequest.fromPartial({
+                    folderId: this.folderId,
+                    pageToken: nextPageToken,
+                }),
+            );
 
             if (response.serviceAccounts) {
                 for (const account of response.serviceAccounts) {
@@ -294,8 +306,6 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
             nextPageToken = response.nextPageToken;
         } while (nextPageToken);
 
-        // TODO: remove it after migration to yandex-cloud@2.X
-        // @ts-ignore
         return result;
     }
 
@@ -305,17 +315,21 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
 
         let nextPageToken;
 
+        type ListAccessBindingsResponse = cloudApi.access.access.ListAccessBindingsResponse;
+
         do {
-            const response: ListAccessBindingsResponse = await this.folders.listAccessBindings({
-                resourceId: this.folderId,
-                pageToken: nextPageToken,
-            });
+            const response: ListAccessBindingsResponse = await this.folders.listAccessBindings(
+                CloudApiAccess.ListAccessBindingsRequest.fromPartial({
+                    resourceId: this.folderId,
+                    pageToken: nextPageToken,
+                }),
+            );
 
             if (response.accessBindings) {
                 for (const access of response.accessBindings) {
                     result.push({
                         role: access.roleId,
-                        subjectId: access.subject.id,
+                        subjectId: access.subject?.id,
                     });
                 }
             }
@@ -337,7 +351,7 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
 
         for (const roleId of Object.values(roles)) {
             accessBindingDeltas.push({
-                action: AccessBindingAction.ADD,
+                action: CloudApiAccess.AccessBindingAction.ADD,
                 accessBinding: {
                     roleId,
                     subject: {
@@ -348,62 +362,80 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
             });
         }
 
-        const operation = await this.folders.updateAccessBindings({
+        const operation = await this.folders.updateAccessBindings(CloudApiAccess.UpdateAccessBindingsRequest.fromPartial({
             resourceId: this.folderId,
             accessBindingDeltas,
-        });
+        }));
 
-        await operation.completion(this.session);
+        await waitForOperation(operation, this.session);
     }
 
     async createServiceAccount(request: CreateServiceAccountRequest) {
         await this.initConnectionsIfNeeded();
-        const operation = await this.serviceAccounts.create({
+
+        const operation = await this.serviceAccounts.create(CloudApiServiceAccountService.CreateServiceAccountRequest.fromPartial({
             folderId: this.folderId,
             name: request.name,
-        });
-        const response = await operation.completion(this.session);
+        }));
+        const response = await waitForOperation(operation, this.session);
 
-        await this.updateAccessBindings(response.getResponse().id, request.roles);
+        if (!response.response) {
+            throw new Error('Service Account create operation returned no result');
+        }
+        const sa = decodeMessage<cloudApi.iam.service_account.ServiceAccount>(response.response);
 
-        return response.getResponse();
+        await this.updateAccessBindings(sa.id, request.roles);
+
+        return sa;
     }
 
     async removeServiceAccount(id: string) {
         await this.initConnectionsIfNeeded();
 
-        return this.serviceAccounts.delete({ serviceAccountId: id });
+        return this.serviceAccounts.delete(CloudApiServiceAccountService.DeleteServiceAccountRequest.fromPartial({
+            serviceAccountId: id,
+        }));
     }
 
     async removeFunction(id: string) {
         await this.initConnectionsIfNeeded();
-        const operation = await this.functions.delete({
+        const operation = await this.functions.delete(CloudApiFunctionsService.DeleteFunctionRequest.fromPartial({
             functionId: id,
-        });
+        }));
 
-        return operation.completion(this.session);
+        return waitForOperation(operation, this.session);
     }
 
     async invokeFunction(id: string) {
         await this.initConnectionsIfNeeded();
 
-        return this.invokeService.invoke(id);
+        const fn = await this.functions.get(CloudApiFunctionsService.GetFunctionRequest.fromPartial({
+            functionId: id,
+        }));
+        const response = await axios.get(fn.httpInvokeUrl);
+
+        return response.data;
     }
 
     async getFunctions(): Promise<FunctionInfo[]> {
         await this.initConnectionsIfNeeded();
+
         const result = [];
 
         let nextPageToken;
 
-        do {
-            const response: ListFunctionsResponse = await this.functions.list({
-                folderId: this.folderId,
-                pageToken: nextPageToken,
-            });
+        type ListFunctionsResponse = cloudApi.serverless.functions_function_service.ListFunctionsResponse;
 
-            if (response.functions) {
-                for (const func of response.functions) {
+        do {
+            const listResponse: ListFunctionsResponse = await this.functions.list(
+                CloudApiFunctionsService.ListFunctionsRequest.fromPartial({
+                    folderId: this.folderId,
+                    pageToken: nextPageToken,
+                }),
+            );
+
+            if (listResponse.functions) {
+                for (const func of listResponse.functions) {
                     result.push({
                         name: func.name,
                         id: func.id,
@@ -411,7 +443,7 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
                 }
             }
 
-            nextPageToken = response.nextPageToken;
+            nextPageToken = listResponse.nextPageToken;
         } while (nextPageToken);
 
         return result;
@@ -419,20 +451,23 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
 
     async updateFunction(request: UpdateFunctionRequest) {
         await this.initConnectionsIfNeeded();
-        const operation = await this.functions.createVersion({
+
+        const createVersionRequest = CloudApiFunctionsService.CreateFunctionVersionRequest.fromPartial({
             functionId: request.id,
             runtime: request.runtime,
             entrypoint: request.handler,
-            resources: { memory: long.fromNumber(request.memory * 1024 * 1024) },
+            resources: { memory: request.memory && (request.memory * 1024 * 1024) },
             executionTimeout: {
-                seconds: long.fromNumber(request.timeout),
+                seconds: request.timeout,
             },
             serviceAccountId: request.serviceAccount,
             content: Buffer.from(fileToBase64(request.code), 'base64'),
             environment: request.environment,
         });
 
-        return operation.completion(this.session);
+        const operation = await this.functions.createVersion(createVersionRequest);
+
+        return waitForOperation(operation, this.session);
     }
 
     // noinspection JSUnusedLocalSymbols
@@ -442,14 +477,21 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
 
     async createFunction(request: CreateFunctionRequest) {
         await this.initConnectionsIfNeeded();
-        let operation = await this.functions.create({
+        let operation = await this.functions.create(CloudApiFunctionsService.CreateFunctionRequest.fromPartial({
             name: request.name,
             folderId: this.folderId,
-        });
+        }));
 
-        operation = await operation.completion(this.session);
+        operation = await waitForOperation(operation, this.session);
 
-        request.id = operation.getResponse().id;
+        if (!operation.response) {
+            throw new Error('Create function operation has no result');
+        }
+
+        const fn = decodeMessage<cloudApi.serverless.functions_function.Function>(operation.response);
+
+        request.id = fn.id;
+
         await this.updateFunction(request);
 
         return request;
@@ -477,11 +519,17 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
         const result = [];
 
         for (const url of (response.QueueUrls || [])) {
-            result.push({
-                id: await this.getMessageQueueId(url),
-                name: this.parseQueueName(url),
-                url,
-            });
+            const mqId = await this.getMessageQueueId(url);
+
+            if (mqId) {
+                result.push({
+                    id: mqId,
+                    name: this.parseQueueName(url),
+                    url,
+                });
+            } else {
+                this.serverless.cli.log(`Unable to resolve ID of Message Queue ${url}`);
+            }
         }
 
         return result;
@@ -525,9 +573,20 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
     async getS3Buckets(): Promise<S3BucketInfo[]> {
         await this.initConnectionsIfNeeded();
         await this.initAwsSdkIfNeeded();
-        const response = await this.s3.listBuckets().promise();
 
-        return response.Buckets?.map((b) => ({ name: b.Name })) || [];
+        const result: S3BucketInfo[] = [];
+        const response = await this.s3.listBuckets().promise();
+        const buckets = response.Buckets || [];
+
+        for (const bucket of buckets) {
+            if (bucket.Name) {
+                result.push({
+                    name: bucket.Name,
+                });
+            }
+        }
+
+        return result;
     }
 
     async createS3Bucket(request: CreateS3BucketRequest) {
@@ -548,13 +607,14 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
         await this.initConnectionsIfNeeded();
         const result = [];
 
-        let nextPageToken;
+        let nextPageToken: string | undefined;
 
         do {
-            const response: ListRegistriesResponse = await this.containerRegistryService.list({
+            const request = CloudApiRegistryService.ListRegistriesRequest.fromJSON({
                 folderId: this.folderId,
                 pageToken: nextPageToken,
             });
+            const response = await this.containerRegistryService.list(request);
 
             if (response.registries) {
                 for (const registry of response.registries) {
@@ -573,15 +633,21 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
 
     async createContainerRegistry(request: CreateContainerRegistryRequest) {
         await this.initConnectionsIfNeeded();
-        let operation = await this.containerRegistryService.create({
+        let operation = await this.containerRegistryService.create(CloudApiRegistryService.CreateRegistryRequest.fromPartial({
             folderId: this.folderId,
             name: request.name,
-        });
+        }));
 
-        operation = await operation.completion(this.session);
+        operation = await waitForOperation(operation, this.session);
+
+        if (!operation.response) {
+            throw new Error('Create registry operation returned no result');
+        }
+
+        const data = decodeMessage<cloudApi.containerregistry.registry.Registry>(operation.response);
 
         return {
-            id: operation.getResponse().id,
+            id: data.id,
             name: request.name,
         };
     }
@@ -589,6 +655,8 @@ export class YandexCloudProvider extends ServerlessAwsProvider implements Server
     async removeContainerRegistry(id: string) {
         await this.initConnectionsIfNeeded();
 
-        return this.containerRegistryService.delete({ registryId: id });
+        return this.containerRegistryService.delete(CloudApiRegistryService.DeleteRegistryRequest.fromPartial({
+            registryId: id,
+        }));
     }
 }
