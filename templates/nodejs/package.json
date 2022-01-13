@@ -1,8 +1,12 @@
 {
 	"name": "serverless-yandex-cloud-template",
 	"version": "1.0.0",
+	"scripts": {
+		"build": "tsc -p ."
+	},
 	"devDependencies": {
-        "serverless": "latest",
-		"serverless-yandex-cloud": "latest"
+		"serverless": "^2.71.0",
+		"serverless-yandex-cloud": "^1.0.0-alpha.1",
+		"typescript": "^4.5.4"
 	}
 }

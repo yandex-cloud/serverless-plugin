@@ -1,10 +1,10 @@
 service: yandex-cloud-nodejs
 name: yandex-cloud-template
-frameworkVersion: ">=1.1.0 <2.0.0"
+frameworkVersion: ">2.0.0"
 
 provider:
   name: yandex-cloud
-  runtime: nodejs12
+  runtime: nodejs16
 
 plugins:
   - serverless-yandex-cloud
@@ -13,7 +13,9 @@ package:
   exclude:
     - ./**
   include:
-    - ./*.js
+    - ./dist/*.js
+    - ./package.json
+    - ./package-lock.json
 
 functions:
   simple:
