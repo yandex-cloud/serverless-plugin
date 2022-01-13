@@ -1,3 +1,4 @@
+/* eslint-disable import/no-import-module-exports */
 import Serverless from 'serverless';
 
 import { YandexCloudProvider } from './provider/provider';
@@ -7,7 +8,7 @@ import { YandexCloudInvoke } from './invoke/invoke';
 import { YandexCloudInfo } from './info/info';
 import { YandexCloudLogs } from './logs/logs';
 
-export default class YandexCloudServerlessPlugin {
+class YandexCloudServerlessPlugin {
     private readonly serverless: Serverless;
     private readonly options: Serverless.Options;
 
@@ -23,3 +24,6 @@ export default class YandexCloudServerlessPlugin {
         this.serverless.pluginManager.addPlugin(YandexCloudLogs);
     }
 }
+
+// eslint-disable-next-line unicorn/prefer-module
+module.exports = YandexCloudServerlessPlugin;
