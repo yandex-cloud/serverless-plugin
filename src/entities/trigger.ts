@@ -149,8 +149,7 @@ export class Trigger {
             this.id = response.id;
             this.serverless.cli.log(`Trigger created "${triggerName}"`);
         } catch (error) {
-            this.serverless.cli.log(`${error}
-      Failed to create trigger "${triggerName}"`);
+            this.serverless.cli.log(`${error}\nFailed to create trigger "${triggerName}"`);
         }
     }
 

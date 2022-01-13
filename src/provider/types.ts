@@ -13,7 +13,7 @@ export interface UpdateFunctionRequest {
     id: string;
     runtime: string;
     handler: string;
-    memory?: number;
+    memorySize?: number;
     timeout?: number;
     serviceAccount?: string;
     code: string;

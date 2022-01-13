@@ -9,6 +9,7 @@ import type ServerlessAwsProviderType from 'serverless/aws';
 import AWS from 'aws-sdk';
 import axios from 'axios';
 import * as lodash from 'lodash';
+import bind from 'bind-decorator';
 import {
     CreateContainerRegistryRequest,
     CreateCronTriggerRequest,
@@ -26,7 +27,8 @@ import {
 import {
     FunctionInfo, MessageQueueInfo, S3BucketInfo, ServiceAccountInfo, TriggerInfo,
 } from '../types/common';
-import { readCliConfig, fileToBase64 } from './helpers';
+import { fileToBase64 } from './helpers';
+import { getYcConfig } from '../utils/yc-config';
 
 const PROVIDER_NAME = 'yandex-cloud';
 
@@ -80,15 +82,16 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
         if (this.session) {
             return;
         }
-        const config = readCliConfig();
+        const config = getYcConfig();
+        const { token, cloudId, folderId } = config;
 
         /* if (config.endpoint) {
             await session.setEndpoint(config.endpoint);
         } */
 
-        this.session = new Session({ oauthToken: config.token });
-        this.folderId = config['folder-id'];
-        this.cloudId = config['cloud-id'];
+        this.session = new Session({ oauthToken: token });
+        this.folderId = folderId;
+        this.cloudId = cloudId;
 
         this.triggers = this.session.client(serviceClients.TriggerServiceClient);
         this.serviceAccounts = this.session.client(serviceClients.ServiceAccountServiceClient);
@@ -138,6 +141,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
         };
     }
 
+    @bind
     async createCronTrigger(request: CreateCronTriggerRequest) {
         await this.initConnectionsIfNeeded();
 
@@ -163,6 +167,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
         }[type];
     }
 
+    @bind
     async createS3Trigger(request: CreateS3TriggerRequest) {
         await this.initConnectionsIfNeeded();
 
@@ -183,6 +188,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
         return waitForOperation(operation, this.session);
     }
 
+    @bind
     async createYMQTrigger(request: CreateYmqTriggerRequest) {
         await this.initConnectionsIfNeeded();
 
@@ -217,6 +223,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
         }[type];
     }
 
+    @bind
     async createCRTrigger(request: CreateCrTriggerRequest) {
         await this.initConnectionsIfNeeded();
 
@@ -459,7 +466,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
             functionId: request.id,
             runtime: request.runtime,
             entrypoint: request.handler,
-            resources: { memory: request.memory && (request.memory * 1024 * 1024) },
+            resources: { memory: request.memorySize && (request.memorySize * 1024 * 1024) },
             executionTimeout: {
                 seconds: request.timeout,
             },

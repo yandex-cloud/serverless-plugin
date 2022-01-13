@@ -1,4 +1,4 @@
-export const getEnv = (envName: string, defaultValue?: string): string => {
+export const getEnvStrict = (envName: string, defaultValue?: string): string => {
     const envValue = process.env[envName] || defaultValue;
 
     if (!envValue) {
@@ -7,3 +7,5 @@ export const getEnv = (envName: string, defaultValue?: string): string => {
 
     return envValue;
 };
+
+export const getEnv = (envName: string): string | undefined => process.env[envName];
