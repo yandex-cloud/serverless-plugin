@@ -3,7 +3,9 @@ import {
 } from 'yandex-cloud';
 import Serverless from 'serverless';
 import ServerlessPlugin from 'serverless/classes/Plugin';
-import ServerlessAwsProvider from 'serverless/plugins/aws/provider/awsProvider';
+// @ts-ignore TODO: fix @types/serverless and remove this ignore
+import ServerlessAwsProvider from 'serverless/lib/plugins/aws/provider';
+import type ServerlessAwsProviderType from 'serverless/aws';
 import AWS from 'aws-sdk';
 import axios from 'axios';
 import * as lodash from 'lodash';
@@ -37,10 +39,11 @@ const {
     },
     iam: { service_account_service: CloudApiServiceAccountService },
     access: { access: CloudApiAccess },
-    resourcemanager: { folder_service: CloudApiFolderService },
 } = cloudApi;
 
-export class YandexCloudProvider extends ServerlessAwsProvider implements ServerlessPlugin {
+const AwsProvider = ServerlessAwsProvider as typeof ServerlessAwsProviderType;
+
+export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin {
     hooks: ServerlessPlugin.Hooks;
     commands?: ServerlessPlugin.Commands | undefined;
     variableResolvers?: ServerlessPlugin.VariableResolvers | undefined;
