@@ -110,8 +110,6 @@ export class YandexCloudDeploy implements ServerlessPlugin {
             });
 
             if (found) {
-                // TODO: remove it after migration to yandex-cloud@2.X
-                // @ts-ignore
                 this.triggerRegistry[trigger.name] = new Trigger(this.serverless, this, trigger);
             }
         }
@@ -143,8 +141,6 @@ export class YandexCloudDeploy implements ServerlessPlugin {
         }
 
         for (const sa of await this.provider.getServiceAccounts()) {
-            // TODO: remove it after migration to yandex-cloud@2.X
-            // @ts-ignore
             this.serviceAccountRegistry[sa.name] = new ServiceAccount(this.serverless, sa);
         }
         for (const [name, params] of Object.entries(this.serverless.service.resources || [])) {
@@ -161,8 +157,6 @@ export class YandexCloudDeploy implements ServerlessPlugin {
         }
 
         for (const r of await this.provider.getContainerRegistries()) {
-            // TODO: remove it after migration to yandex-cloud@2.X
-            // @ts-ignore
             this.containerRegistryRegistry[r.name] = new ContainerRegistry(this.serverless, r);
         }
         for (const [name, params] of Object.entries(this.serverless.service.resources || [])) {
@@ -180,8 +174,6 @@ export class YandexCloudDeploy implements ServerlessPlugin {
 
         try {
             for (const queue of await this.provider.getMessageQueues()) {
-                // TODO: remove it after migration to yandex-cloud@2.X
-                // @ts-ignore
                 this.messageQueueRegistry[queue.name] = new MessageQueue(this.serverless, queue);
             }
             for (const [name, params] of Object.entries(this.serverless.service.resources || [])) {
@@ -205,8 +197,6 @@ export class YandexCloudDeploy implements ServerlessPlugin {
 
             for (const bucket of await this.provider.getS3Buckets()) {
                 if (bucket.name) {
-                    // TODO: remove it after migration to yandex-cloud@2.X
-                    // @ts-ignore
                     this.objectStorageRegistry[bucket.name] = new ObjectStorage(this.serverless, bucket);
                 }
             }

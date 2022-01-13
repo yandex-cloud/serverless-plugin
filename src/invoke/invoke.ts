@@ -33,8 +33,7 @@ export class YandexCloudInvoke implements ServerlessPlugin {
 
             return;
         }
-        // TODO: remove it after migration to yandex-cloud@2.X
-        // @ts-ignore
+
         const result = await this.provider.invokeFunction(toInvoke[0].id);
 
         this.serverless.cli.log(JSON.stringify(result));

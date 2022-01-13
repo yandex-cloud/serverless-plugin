@@ -33,8 +33,6 @@ export class YandexCloudRemove implements ServerlessPlugin {
         const functionFound = existingFunctions.find((func) => func.name === describedFunctionName);
 
         if (functionFound) {
-            // TODO: remove it after migration to yandex-cloud@2.X
-            // @ts-ignore
             await this.provider.removeFunction(functionFound.id);
 
             this.serverless.cli.log(`Function "${describedFunctionName}" removed`);
@@ -47,8 +45,6 @@ export class YandexCloudRemove implements ServerlessPlugin {
         const triggerFound = existingTriggers.find((trigger) => trigger.name === describedTriggerName);
 
         if (triggerFound) {
-            // TODO: remove it after migration to yandex-cloud@2.X
-            // @ts-ignore
             await this.provider.removeTrigger(triggerFound.id);
 
             this.serverless.cli.log(`Trigger "${describedTriggerName}" removed`);
@@ -61,8 +57,6 @@ export class YandexCloudRemove implements ServerlessPlugin {
         const accFound = existingAccounts.find((acc) => acc.name === describedSaName);
 
         if (accFound) {
-            // TODO: remove it after migration to yandex-cloud@2.X
-            // @ts-ignore
             await this.provider.removeServiceAccount(accFound.id);
 
             this.serverless.cli.log(`Service account "${describedSaName}" removed`);

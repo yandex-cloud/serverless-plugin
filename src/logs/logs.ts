@@ -30,8 +30,7 @@ export class YandexCloudLogs implements ServerlessPlugin {
         if (toLog.length !== 1) {
             return;
         }
-        // TODO: remove it after migration to yandex-cloud@2.X
-        // @ts-ignore
+
         const result = await this.provider.getFunctionLogs(toLog[0].id);
 
         this.serverless.cli.log(JSON.stringify(result));

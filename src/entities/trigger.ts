@@ -2,6 +2,7 @@ import Serverless from 'serverless';
 
 import { YandexCloudProvider } from '../provider/provider';
 import { YandexCloudDeploy } from '../deploy/deploy';
+import { TriggerInfo } from '../types/common';
 
 type TriggerType = 'cron' | 's3' | 'ymq' | 'cr';
 
@@ -63,14 +64,14 @@ type TriggerState = CrTriggerState | YmqTriggerState | S3TriggerState | CronTrig
 export class Trigger {
     private readonly provider: YandexCloudProvider;
     private readonly serverless: Serverless;
-    private readonly initialState?: TriggerState;
+    private readonly initialState?: TriggerInfo;
     private readonly deploy: YandexCloudDeploy;
 
     private newState?: TriggerState;
 
     public id?: string;
 
-    constructor(serverless: Serverless, deploy: YandexCloudDeploy, initial?: TriggerState) {
+    constructor(serverless: Serverless, deploy: YandexCloudDeploy, initial?: TriggerInfo) {
         this.provider = serverless.getProvider('yandex-cloud') as YandexCloudProvider;
         this.serverless = serverless;
         this.initialState = initial;

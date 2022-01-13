@@ -1,25 +1,25 @@
 import Serverless from 'serverless';
 
 import { YandexCloudProvider } from '../provider/provider';
+import { MessageQueueInfo } from '../types/common';
 
 interface MessageQueueState {
     id?: string;
     url?: string;
     name: string;
-    // TODO: specify type
     params: unknown;
 }
 
 export class MessageQueue {
     private readonly serverless: Serverless;
-    private readonly initialState?: MessageQueueState;
+    private readonly initialState?: MessageQueueInfo;
 
     private newState?: MessageQueueState;
 
     public id?: string;
     public url?: string;
 
-    constructor(serverless: Serverless, initial?: MessageQueueState) {
+    constructor(serverless: Serverless, initial?: MessageQueueInfo) {
         this.serverless = serverless;
         this.initialState = initial;
         this.id = initial?.id;
