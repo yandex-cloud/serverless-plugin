@@ -2,7 +2,8 @@
 	"name": "serverless-yandex-cloud-template",
 	"version": "1.0.0",
 	"scripts": {
-		"build": "tsc -p ."
+		"build": "tsc -p .",
+		"deploy": "npm run build && npx --no-install serverless deploy"
 	},
 	"devDependencies": {
 		"serverless": "^2.71.0",

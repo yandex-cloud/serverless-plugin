@@ -85,7 +85,6 @@ export class YCFunction {
                 code: this.serverless.service.package.artifact,
                 id: this.initialState.id,
                 serviceAccount: this.deploy.getServiceAccountId(this.newState.params.account),
-                memory: this.newState.params.memorySize,
             };
 
             try {
