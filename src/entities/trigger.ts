@@ -2,9 +2,12 @@ import Serverless from 'serverless';
 
 import { YandexCloudProvider } from '../provider/provider';
 import { YandexCloudDeploy } from '../deploy/deploy';
-import { TriggerInfo } from '../types/common';
+import { TriggerInfo, TriggerType } from '../types/common';
 
-type TriggerType = 'cron' | 's3' | 'ymq' | 'cr';
+interface RetryOptions {
+    attempts: number;
+    interval: number;
+}
 
 interface BaseTriggerState {
     id?: string;
@@ -18,6 +21,8 @@ interface CronTriggerState extends BaseTriggerState {
     type: 'cron';
     params: {
         account: string;
+        expression: string;
+        retry?: RetryOptions,
         dlq?: string;
         dlqId?: string;
         dlqAccountId?: string;
@@ -29,6 +34,11 @@ interface S3TriggerState extends BaseTriggerState {
     type: 's3';
     params: {
         account: string;
+        events: string[];
+        bucket: string;
+        prefix?: string;
+        suffix?: string;
+        retry?: RetryOptions,
         dlq?: string;
         dlqId?: string;
         dlqAccountId?: string;
@@ -43,19 +53,24 @@ interface YmqTriggerState extends BaseTriggerState {
         queueId: string;
         queue: string;
         queueAccount: string;
+        retry: RetryOptions,
     }
 }
 
 interface CrTriggerState extends BaseTriggerState {
     type: 'cr';
     params: {
+        events: string[];
         account: string;
-        registryId: string;
+        registryId?: string;
         registry: string;
+        imageName: string;
+        tag: string;
         dlq?: string;
         dlqId?: string;
         dlqAccountId?: string;
         dlqAccount?: string;
+        retry: RetryOptions,
     }
 }
 
@@ -203,7 +218,7 @@ export class Trigger {
     }
 
     static supportedTriggers(): TriggerType[] {
-        return ['cron', 's3', 'ymq', 'cr'];
+        return [TriggerType.CRON, TriggerType.S3, TriggerType.YMQ, TriggerType.CR];
     }
 
     static normalizeEvent(event: Serverless.Event) {

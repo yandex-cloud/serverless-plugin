@@ -17,8 +17,9 @@ Now you can create new project from template provided by this plugin:
     serverless create \
       --template-url https://github.com/yandex-cloud/serverless-plugin/tree/master/templates/nodejs
 
-Before you deploy your first functions using Serverless, you will need to configure Yandex.Cloud credentials. The easiest way to do that
-is to install the `yc` command-line tool and use the setup wizard to provide all required parameters. All required guides and in-depth documentation is available at [Yandex.Cloud website](https://cloud.yandex.com/docs/cli/quickstart).
+Before you deploy your first functions using Serverless, you need to configure Yandex.Cloud credentials. There are two ways to do it:
+- Install the `yc` command-line tool and use the setup wizard to provide all required parameters. All required guides and in-depth documentation is available at [Yandex.Cloud website](https://cloud.yandex.com/docs/cli/quickstart).
+- Provide `YC_TOKEN`, `YC_CLOUD_ID` and `YC_FOLDER_ID` environment variables
 
 To deploy your project use:
 
