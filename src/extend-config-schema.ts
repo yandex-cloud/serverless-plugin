@@ -1,7 +1,154 @@
 import Serverless from 'serverless';
+import type { JSONSchema7 } from 'json-schema';
 
 import { YandexCloudProvider } from './provider/provider';
 import { TriggerType } from './types/common';
+
+const schemaCronTrigger: JSONSchema7 = {
+    type: 'object',
+    properties: {
+        expression: { type: 'string' },
+        account: { type: 'string' },
+        retry: {
+            type: 'object',
+            properties: {
+                attempts: { type: 'number' },
+                interval: { type: 'number' },
+            },
+        },
+        dlq: { type: 'string' },
+        dlqId: { type: 'string' },
+        dlqAccountId: { type: 'string' },
+        dlqAccount: { type: 'string' },
+    },
+    required: ['expression', 'account'],
+};
+
+const schemaCronS3: JSONSchema7 = {
+    type: 'object',
+    properties: {
+        bucket: { type: 'string' },
+        account: { type: 'string' },
+        events: {
+            type: 'array',
+            items: {
+                type: 'string',
+            },
+        },
+        prefix: { type: 'string' },
+        suffix: { type: 'string' },
+        retry: {
+            type: 'object',
+            properties: {
+                attempts: { type: 'number' },
+                interval: { type: 'number' },
+            },
+        },
+        dlq: { type: 'string' },
+        dlqId: { type: 'string' },
+        dlqAccountId: { type: 'string' },
+        dlqAccount: { type: 'string' },
+    },
+    required: ['bucket', 'account', 'events'],
+};
+
+const schemaCronYMQ: JSONSchema7 = {
+    type: 'object',
+    properties: {
+        queue: { type: 'string' },
+        queueId: { type: 'string' },
+        queueAccount: { type: 'string' },
+        account: { type: 'string' },
+        retry: {
+            type: 'object',
+            properties: {
+                attempts: { type: 'number' },
+                interval: { type: 'number' },
+            },
+        },
+    },
+    required: ['queue', 'account', 'queueAccount'],
+};
+
+const schemaCronCR: JSONSchema7 = {
+    type: 'object',
+    properties: {
+        registry: { type: 'string' },
+        registryId: { type: 'string' },
+        imageName: { type: 'string' },
+        tag: { type: 'string' },
+        events: {
+            type: 'array',
+            items: {
+                type: 'string',
+            },
+        },
+        account: { type: 'string' },
+        retry: {
+            type: 'object',
+            properties: {
+                attempts: { type: 'number' },
+                interval: { type: 'number' },
+            },
+        },
+        dlq: { type: 'string' },
+        dlqId: { type: 'string' },
+        dlqAccountId: { type: 'string' },
+        dlqAccount: { type: 'string' },
+    },
+    required: ['events', 'account', 'imageName', 'tag', 'registry'],
+};
+
+const schemaResources: JSONSchema7 = {
+    type: 'object',
+    patternProperties: {
+        '^.*$': {
+            oneOf: [
+                {
+                    type: 'object',
+                    properties: {
+                        type: {
+                            enum: ['yc::ServiceAccount'],
+                        },
+                        roles: {
+                            type: 'array',
+                            items: {
+                                type: 'string',
+                            },
+                        },
+                    },
+                },
+                {
+                    type: 'object',
+                    properties: {
+                        type: {
+                            enum: ['yc::MessageQueue'],
+                        },
+                        name: { type: 'string' },
+                    },
+                },
+                {
+                    type: 'object',
+                    properties: {
+                        type: {
+                            enum: ['yc::ObjectStorageBucket'],
+                        },
+                        name: { type: 'string' },
+                    },
+                },
+                {
+                    type: 'object',
+                    properties: {
+                        type: {
+                            enum: ['yc::ContainerRegistry'],
+                        },
+                        name: { type: 'string' },
+                    },
+                },
+            ],
+        },
+    },
+};
 
 export const extendConfigSchema = (sls: Serverless) => {
     sls.configSchemaHandler.defineProvider(YandexCloudProvider.getProviderName(), {
@@ -86,98 +233,32 @@ export const extendConfigSchema = (sls: Serverless) => {
         },
     });
 
-    sls.configSchemaHandler.defineFunctionEvent(YandexCloudProvider.getProviderName(), TriggerType.CRON, {
-        type: 'object',
-        properties: {
-            expression: { type: 'string' },
-            account: { type: 'string' },
-            retry: {
-                type: 'object',
-                properties: {
-                    attempts: { type: 'number' },
-                    interval: { type: 'number' },
-                },
-            },
-            dlq: { type: 'string' },
-            dlqId: { type: 'string' },
-            dlqAccountId: { type: 'string' },
-            dlqAccount: { type: 'string' },
-        },
-        required: ['expression', 'account'],
-    });
+    sls.configSchemaHandler.defineTopLevelProperty(
+        'resources',
+        schemaResources as Record<string, unknown>,
+    );
 
-    sls.configSchemaHandler.defineFunctionEvent(YandexCloudProvider.getProviderName(), TriggerType.S3, {
-        type: 'object',
-        properties: {
-            bucket: { type: 'string' },
-            account: { type: 'string' },
-            events: {
-                type: 'array',
-                items: {
-                    type: 'string',
-                },
-            },
-            prefix: { type: 'string' },
-            suffix: { type: 'string' },
-            retry: {
-                type: 'object',
-                properties: {
-                    attempts: { type: 'number' },
-                    interval: { type: 'number' },
-                },
-            },
-            dlq: { type: 'string' },
-            dlqId: { type: 'string' },
-            dlqAccountId: { type: 'string' },
-            dlqAccount: { type: 'string' },
-        },
-        required: ['bucket', 'account', 'events'],
-    });
+    sls.configSchemaHandler.defineFunctionEvent(
+        YandexCloudProvider.getProviderName(),
+        TriggerType.CRON,
+        schemaCronTrigger as Record<string, unknown>,
+    );
 
-    sls.configSchemaHandler.defineFunctionEvent(YandexCloudProvider.getProviderName(), TriggerType.YMQ, {
-        type: 'object',
-        properties: {
-            queue: { type: 'string' },
-            queueId: { type: 'string' },
-            queueAccount: { type: 'string' },
-            account: { type: 'string' },
-            retry: {
-                type: 'object',
-                properties: {
-                    attempts: { type: 'number' },
-                    interval: { type: 'number' },
-                },
-            },
-        },
-        required: ['queue', 'account', 'queueAccount'],
-    });
+    sls.configSchemaHandler.defineFunctionEvent(
+        YandexCloudProvider.getProviderName(),
+        TriggerType.S3,
+        schemaCronS3 as Record<string, unknown>,
+    );
 
-    sls.configSchemaHandler.defineFunctionEvent(YandexCloudProvider.getProviderName(), TriggerType.CR, {
-        type: 'object',
-        properties: {
-            registry: { type: 'string' },
-            registryId: { type: 'string' },
-            imageName: { type: 'string' },
-            tag: { type: 'string' },
-            events: {
-                type: 'array',
-                items: {
-                    type: 'string',
-                },
-            },
-            account: { type: 'string' },
-            retry: {
-                type: 'object',
-                properties: {
-                    attempts: { type: 'number' },
-                    interval: { type: 'number' },
-                },
-            },
-            dlq: { type: 'string' },
-            dlqId: { type: 'string' },
-            dlqAccountId: { type: 'string' },
-            dlqAccount: { type: 'string' },
-        },
-        required: ['events', 'account', 'imageName', 'tag', 'registry'],
-    });
+    sls.configSchemaHandler.defineFunctionEvent(
+        YandexCloudProvider.getProviderName(),
+        TriggerType.YMQ,
+        schemaCronYMQ as Record<string, unknown>,
+    );
+
+    sls.configSchemaHandler.defineFunctionEvent(
+        YandexCloudProvider.getProviderName(),
+        TriggerType.CR,
+        schemaCronCR as Record<string, unknown>,
+    );
 };
