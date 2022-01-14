@@ -1,5 +1,4 @@
 service: yandex-cloud-nodejs
-name: yandex-cloud-template
 frameworkVersion: ">2.0.0"
 
 provider:
@@ -19,14 +18,14 @@ package:
 
 functions:
   simple:
-    handler: index.hello
-    memory: 128
+    handler: dist/index.hello
+    memorySize: 128
     timeout: 5
     account: function-sa
 
   timer:
-    handler: index.hello
-    memory: 128
+    handler: dist/index.hello
+    memorySize: 128
     timeout: 5
     events:
       - cron:
