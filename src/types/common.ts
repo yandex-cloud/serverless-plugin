@@ -30,3 +30,10 @@ export interface ServerlessFunc extends Serverless.FunctionDefinition {
     account: string;
     handler: string;
 }
+
+export enum TriggerType {
+    CRON = 'cron',
+    S3 = 's3',
+    YMQ = 'ymq',
+    CR = 'cr',
+}
