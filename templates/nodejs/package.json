@@ -6,8 +6,8 @@
 		"deploy": "npm run build && npx --no-install serverless deploy"
 	},
 	"devDependencies": {
+		"@yandex-cloud/serverless-plugin": "^1.0.0-alpha.8",
 		"serverless": "^2.71.0",
-		"serverless-yandex-cloud": "^1.0.0-alpha.5",
 		"typescript": "^4.5.4"
 	}
 }

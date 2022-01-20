@@ -6,7 +6,7 @@ provider:
   runtime: nodejs16
 
 plugins:
-  - serverless-yandex-cloud
+  - "@yandex-cloud/serverless-plugin"
 
 package:
   exclude:
