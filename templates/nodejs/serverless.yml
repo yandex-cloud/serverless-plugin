@@ -1,6 +1,6 @@
 service: yandex-cloud-nodejs
 name: yandex-cloud-template
-frameworkVersion: ">=1.1.0 <2.0.0"
+configValidationMode: off
 
 provider:
   name: yandex-cloud
