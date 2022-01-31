@@ -1,6 +1,6 @@
 import {
     cloudApi, serviceClients, Session, WrappedServiceClientType, waitForOperation, decodeMessage,
-} from 'yandex-cloud';
+} from '@yandex-cloud/nodejs-sdk';
 import Serverless from 'serverless';
 import ServerlessPlugin from 'serverless/classes/Plugin';
 // @ts-ignore TODO: fix @types/serverless and remove this ignore
