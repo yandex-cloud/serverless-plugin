@@ -1,5 +1,5 @@
 service: yandex-cloud-nodejs
-frameworkVersion: ">2.0.0"
+frameworkVersion: "3"
 
 provider:
   name: yandex-cloud
