@@ -173,49 +173,50 @@ export class YandexCloudDeploy implements ServerlessPlugin {
         }
 
         try {
-            for (const queue of await this.provider.getMessageQueues()) {
-                this.messageQueueRegistry[queue.name] = new MessageQueue(this.serverless, queue);
-            }
-            for (const [name, params] of Object.entries(this.serverless.service.resources || [])) {
-                if (!params.type || params.type !== 'yc::MessageQueue') {
-                    continue;
+            const ymqResources = Object.entries(this.serverless.service.resources)
+                .filter(([name, params]) => params.type === 'yc::MessageQueue');
+            const s3Resouces = Object.entries(this.serverless.service.resources)
+                .filter(([name, params]) => params.type === 'yc::ObjectStorageBucket');
+
+            if (ymqResources.length > 0) {
+                for (const queue of await this.provider.getMessageQueues()) {
+                    this.messageQueueRegistry[queue.name] = new MessageQueue(this.serverless, queue);
                 }
 
-                if (name in this.messageQueueRegistry) {
-                    this.messageQueueRegistry[name].setNewState({
-                        name,
-                        params,
-                    });
-                } else {
-                    this.messageQueueRegistry[name] = new MessageQueue(this.serverless);
-                    this.messageQueueRegistry[name].setNewState({
-                        name,
-                        params,
-                    });
+                for (const [name, params] of ymqResources) {
+                    if (name in this.messageQueueRegistry) {
+                        this.messageQueueRegistry[name].setNewState({
+                            name,
+                            params,
+                        });
+                    } else {
+                        this.messageQueueRegistry[name] = new MessageQueue(this.serverless);
+                        this.messageQueueRegistry[name].setNewState({
+                            name,
+                            params,
+                        });
+                    }
                 }
             }
 
-            for (const bucket of await this.provider.getS3Buckets()) {
-                if (bucket.name) {
+            if (s3Resouces.length > 0) {
+                for (const bucket of await this.provider.getS3Buckets()) {
                     this.objectStorageRegistry[bucket.name] = new ObjectStorage(this.serverless, bucket);
                 }
-            }
-            for (const [name, params] of Object.entries(this.serverless.service.resources || [])) {
-                if (!params.type || params.type !== 'yc::ObjectStorageBucket') {
-                    continue;
-                }
 
-                if (name in this.objectStorageRegistry) {
-                    this.objectStorageRegistry[name].setNewState({
-                        name,
-                        params,
-                    });
-                } else {
-                    this.objectStorageRegistry[name] = new ObjectStorage(this.serverless);
-                    this.objectStorageRegistry[name].setNewState({
-                        name,
-                        params,
-                    });
+                for (const [name, params] of s3Resouces) {
+                    if (name in this.objectStorageRegistry) {
+                        this.objectStorageRegistry[name].setNewState({
+                            name,
+                            params,
+                        });
+                    } else {
+                        this.objectStorageRegistry[name] = new ObjectStorage(this.serverless);
+                        this.objectStorageRegistry[name].setNewState({
+                            name,
+                            params,
+                        });
+                    }
                 }
             }
         } catch (error) {
@@ -236,13 +237,6 @@ export class YandexCloudDeploy implements ServerlessPlugin {
     }
 
     async deploy() {
-        const described = this.getNeedDeployFunctions();
-        const funcName = this.options[functionOption];
-
-        if (funcName) {
-            return this.deployService(pick(described, funcName));
-        }
-
-        return this.deployService(described);
+        return this.deployService(this.getNeedDeployFunctions());
     }
 }

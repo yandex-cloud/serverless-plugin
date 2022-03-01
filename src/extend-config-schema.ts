@@ -210,7 +210,6 @@ export const extendConfigSchema = (sls: Serverless) => {
                 project: { type: 'string' },
                 region: { $ref: '#/definitions/cloudFunctionRegion' },
                 runtime: { $ref: '#/definitions/cloudFunctionRuntime' }, // Can be overridden by function configuration
-                serviceAccountEmail: { type: 'string' }, // Can be overridden by function configuration
                 memorySize: { $ref: '#/definitions/cloudFunctionMemory' }, // Can be overridden by function configuration
                 timeout: { type: 'string' }, // Can be overridden by function configuration
                 environment: { $ref: '#/definitions/cloudFunctionEnvironmentVariables' }, // Can be overridden by function configuration
@@ -222,7 +221,6 @@ export const extendConfigSchema = (sls: Serverless) => {
             properties: {
                 handler: { type: 'string' },
                 runtime: { $ref: '#/definitions/cloudFunctionRuntime' }, // Override provider configuration
-                serviceAccountEmail: { type: 'string' }, // Override provider configuration
                 memorySize: { $ref: '#/definitions/cloudFunctionMemory' }, // Override provider configuration
                 timeout: { type: 'string' }, // Override provider configuration
                 environment: { $ref: '#/definitions/cloudFunctionEnvironmentVariables' }, // Override provider configuration
