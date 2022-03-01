@@ -149,10 +149,10 @@ export class YandexCloudDeploy implements ServerlessPlugin {
             }
 
             if (name in this.serviceAccountRegistry) {
-                this.serviceAccountRegistry[name].setNewState({ name, params });
+                this.serviceAccountRegistry[name].setNewState({ name, ...params });
             } else {
                 this.serviceAccountRegistry[name] = new ServiceAccount(this.serverless);
-                this.serviceAccountRegistry[name].setNewState({ name, params });
+                this.serviceAccountRegistry[name].setNewState({ name, ...params });
             }
         }
 
@@ -165,10 +165,16 @@ export class YandexCloudDeploy implements ServerlessPlugin {
             }
 
             if (name in this.containerRegistryRegistry) {
-                this.containerRegistryRegistry[name].setNewState({ name, params });
+                this.containerRegistryRegistry[name].setNewState({
+                    name,
+                    // params
+                });
             } else {
                 this.containerRegistryRegistry[name] = new ContainerRegistry(this.serverless);
-                this.containerRegistryRegistry[name].setNewState({ name, params });
+                this.containerRegistryRegistry[name].setNewState({
+                    name,
+                    // params
+                });
             }
         }
 
@@ -187,13 +193,13 @@ export class YandexCloudDeploy implements ServerlessPlugin {
                     if (name in this.messageQueueRegistry) {
                         this.messageQueueRegistry[name].setNewState({
                             name,
-                            params,
+                            // params,
                         });
                     } else {
                         this.messageQueueRegistry[name] = new MessageQueue(this.serverless);
                         this.messageQueueRegistry[name].setNewState({
                             name,
-                            params,
+                            // params,
                         });
                     }
                 }
@@ -208,13 +214,13 @@ export class YandexCloudDeploy implements ServerlessPlugin {
                     if (name in this.objectStorageRegistry) {
                         this.objectStorageRegistry[name].setNewState({
                             name,
-                            params,
+                            // params,
                         });
                     } else {
                         this.objectStorageRegistry[name] = new ObjectStorage(this.serverless);
                         this.objectStorageRegistry[name].setNewState({
                             name,
-                            params,
+                            // params,
                         });
                     }
                 }

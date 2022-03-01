@@ -394,7 +394,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     }
 
     async getFunctions(): Promise<FunctionInfo[]> {
-        const result = [];
+        const result: FunctionInfo[] = [];
 
         let nextPageToken;
 

@@ -4,11 +4,8 @@ import { YandexCloudProvider } from '../provider/provider';
 
 interface ServiceAccountState {
     id?: string;
-    roles?: string[];
+    roles: string[];
     name: string;
-    params?: {
-        roles: string[];
-    }
 }
 
 export class ServiceAccount {
@@ -39,8 +36,8 @@ export class ServiceAccount {
         if (this.initialState) {
             if (
                 (this.initialState.roles
-                && this.initialState.roles.length === this.newState.params?.roles.length
-                && this.initialState.roles.every((ir) => this.newState?.params?.roles.find((nr) => nr === ir)))
+                && this.initialState.roles.length === this.newState?.roles.length
+                && this.initialState.roles.every((ir) => this.newState?.roles.find((nr) => nr === ir)))
                 || !this.initialState?.id
             ) {
                 return;
@@ -57,7 +54,7 @@ export class ServiceAccount {
         try {
             const response = await provider.createServiceAccount({
                 name: this.newState.name,
-                roles: this.newState.params?.roles,
+                roles: this.newState?.roles,
             });
 
             this.id = response.id;

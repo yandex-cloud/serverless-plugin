@@ -109,9 +109,12 @@ export class YandexCloudRemove implements ServerlessPlugin {
         const describedFunctions = this.serverless.service.functions;
         const existingAccounts = await this.provider.getServiceAccounts();
 
-        for (const descFunc of Object.values(describedFunctions || [])) {
+        for (const descFunc of Object.values(describedFunctions)) {
             for (const triggerType of Trigger.supportedTriggers()) {
-                this.removeTrigger(`${descFunc.name}-${triggerType}`, existingTriggers);
+                // @ts-ignore
+                if (descFunc.events.some((e) => e[triggerType])) {
+                    this.removeTrigger(`${descFunc.name}-${triggerType}`, existingTriggers);
+                }
             }
 
             if (descFunc.name) {

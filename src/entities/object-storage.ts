@@ -4,8 +4,6 @@ import { YandexCloudProvider } from '../provider/provider';
 
 interface ObjectStorageState {
     name: string;
-    // TODO: specify type
-    params?: unknown;
 }
 
 export class ObjectStorage {
