@@ -38,8 +38,13 @@ describe('Remove', () => {
     test('remove service', async () => {
         serverlessMock.service = {
             functions: {
-                func1: { name: 'yc-nodejs-dev-func1' },
-                func2: { name: 'yc-nodejs-dev-func2' },
+                func1: {
+                    name: 'yc-nodejs-dev-func1',
+                    events: [
+                        { cron: { name: 'yc-nodejs-dev-func1-cron', id: 'id2' } },
+                    ],
+                },
+                func2: { name: 'yc-nodejs-dev-func2', events: [] },
             },
             package: { artifact: 'codePath' },
             provider: { runtime: 'runtime' },
