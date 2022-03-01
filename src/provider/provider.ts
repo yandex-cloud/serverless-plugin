@@ -29,6 +29,7 @@ import {
 } from '../types/common';
 import { fileToBase64 } from './helpers';
 import { getYcConfig } from '../utils/yc-config';
+import { getEnv } from '../utils/get-env';
 
 const PROVIDER_NAME = 'yandex-cloud';
 
@@ -53,17 +54,16 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     private readonly serverless: Serverless;
     private readonly options: Serverless.Options;
 
-    // TODO: get rid of non-null assertion
-    private session!: Session;
-    private folderId!: string;
-    private cloudId!: string;
-    private triggers!: WrappedServiceClientType<typeof serviceClients.TriggerServiceClient.service>;
-    private serviceAccounts!: WrappedServiceClientType<typeof serviceClients.ServiceAccountServiceClient.service>;
-    private functions!: WrappedServiceClientType<typeof serviceClients.FunctionServiceClient.service>;
-    private folders!: WrappedServiceClientType<typeof serviceClients.FolderServiceClient.service>;
-    private containerRegistryService!: WrappedServiceClientType<typeof serviceClients.RegistryServiceClient.service>;
-    private ymq!: AWS.SQS;
-    private s3!: AWS.S3;
+    private session: Session;
+    private folderId: string;
+    private cloudId: string;
+    private triggers: WrappedServiceClientType<typeof serviceClients.TriggerServiceClient.service>;
+    private serviceAccounts: WrappedServiceClientType<typeof serviceClients.ServiceAccountServiceClient.service>;
+    private functions: WrappedServiceClientType<typeof serviceClients.FunctionServiceClient.service>;
+    private folders: WrappedServiceClientType<typeof serviceClients.FolderServiceClient.service>;
+    private containerRegistryService: WrappedServiceClientType<typeof serviceClients.RegistryServiceClient.service>;
+    private ymq: AWS.SQS;
+    private s3: AWS.S3;
 
     static getProviderName() {
         return PROVIDER_NAME;
@@ -76,18 +76,10 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
         this.options = options;
         this.serverless.setProvider(PROVIDER_NAME, this);
         this.hooks = {};
-    }
 
-    async initConnectionsIfNeeded() {
-        if (this.session) {
-            return;
-        }
+        // Init YC API client
         const config = getYcConfig();
         const { token, cloudId, folderId } = config;
-
-        /* if (config.endpoint) {
-            await session.setEndpoint(config.endpoint);
-        } */
 
         this.session = new Session({ oauthToken: token });
         this.folderId = folderId;
@@ -98,25 +90,21 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
         this.functions = this.session.client(serviceClients.FunctionServiceClient);
         this.folders = this.session.client(serviceClients.FolderServiceClient);
         this.containerRegistryService = this.session.client(serviceClients.RegistryServiceClient);
-    }
 
-    async initAwsSdkIfNeeded() {
-        if (this.ymq) {
-            return;
-        }
-        const config = {
+        // Init AWS SDK
+        const awsConfig = {
             region: 'ru-central1',
-            accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+            accessKeyId: getEnv('AWS_ACCESS_KEY_ID'),
+            secretAccessKey: getEnv('AWS_SECRET_ACCESS_KEY'),
         };
 
         this.ymq = new AWS.SQS({
-            endpoint: process.env.YMQ_ENDPOINT ? process.env.YMQ_ENDPOINT : 'https://message-queue.api.cloud.yandex.net',
-            ...config,
+            endpoint: 'https://message-queue.api.cloud.yandex.net',
+            ...awsConfig,
         });
         this.s3 = new AWS.S3({
-            endpoint: process.env.S3_ENDPOINT ? process.env.S3_ENDPOINT : 'https://storage.yandexcloud.net',
-            ...config,
+            endpoint: 'https://storage.yandexcloud.net',
+            ...awsConfig,
         });
     }
 
@@ -143,8 +131,6 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
 
     @bind
     async createCronTrigger(request: CreateCronTriggerRequest) {
-        await this.initConnectionsIfNeeded();
-
         const operation = await this.triggers.create(CloudApiTriggersService.CreateTriggerRequest.fromPartial({
             folderId: this.folderId,
             name: request.name,
@@ -169,8 +155,6 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
 
     @bind
     async createS3Trigger(request: CreateS3TriggerRequest) {
-        await this.initConnectionsIfNeeded();
-
         const operation = await this.triggers.create(CloudApiTriggersService.CreateTriggerRequest.fromPartial({
             folderId: this.folderId,
             name: request.name,
@@ -190,8 +174,6 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
 
     @bind
     async createYMQTrigger(request: CreateYmqTriggerRequest) {
-        await this.initConnectionsIfNeeded();
-
         const operation = await this.triggers.create(CloudApiTriggersService.CreateTriggerRequest.fromPartial({
             folderId: this.folderId,
             name: request.name,
@@ -225,8 +207,6 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
 
     @bind
     async createCRTrigger(request: CreateCrTriggerRequest) {
-        await this.initConnectionsIfNeeded();
-
         const operation = await this.triggers.create(CloudApiTriggersService.CreateTriggerRequest.fromPartial({
             folderId: this.folderId,
             name: request.name,
@@ -246,8 +226,6 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     }
 
     async removeTrigger(id: string) {
-        await this.initConnectionsIfNeeded();
-
         const operation = await this.triggers.delete(CloudApiTriggersService.DeleteTriggerRequest.fromPartial({
             triggerId: id,
         }));
@@ -256,7 +234,6 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     }
 
     async getTriggers(): Promise<TriggerInfo[]> {
-        await this.initConnectionsIfNeeded();
         const result = [];
 
         let nextPageToken;
@@ -287,7 +264,6 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     }
 
     async getServiceAccounts(): Promise<ServiceAccountInfo[]> {
-        await this.initConnectionsIfNeeded();
         const access = await this.getAccessBindings();
 
         const result = [];
@@ -320,7 +296,6 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     }
 
     async getAccessBindings() {
-        await this.initConnectionsIfNeeded();
         const result = [];
 
         let nextPageToken;
@@ -351,8 +326,6 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     }
 
     async updateAccessBindings(saId: string, roles: string[]) {
-        await this.initConnectionsIfNeeded();
-
         if (!roles || roles.length === 0) {
             return;
         }
@@ -381,8 +354,6 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     }
 
     async createServiceAccount(request: CreateServiceAccountRequest) {
-        await this.initConnectionsIfNeeded();
-
         const operation = await this.serviceAccounts.create(CloudApiServiceAccountService.CreateServiceAccountRequest.fromPartial({
             folderId: this.folderId,
             name: request.name,
@@ -400,15 +371,12 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     }
 
     async removeServiceAccount(id: string) {
-        await this.initConnectionsIfNeeded();
-
         return this.serviceAccounts.delete(CloudApiServiceAccountService.DeleteServiceAccountRequest.fromPartial({
             serviceAccountId: id,
         }));
     }
 
     async removeFunction(id: string) {
-        await this.initConnectionsIfNeeded();
         const operation = await this.functions.delete(CloudApiFunctionsService.DeleteFunctionRequest.fromPartial({
             functionId: id,
         }));
@@ -417,8 +385,6 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     }
 
     async invokeFunction(id: string) {
-        await this.initConnectionsIfNeeded();
-
         const fn = await this.functions.get(CloudApiFunctionsService.GetFunctionRequest.fromPartial({
             functionId: id,
         }));
@@ -428,8 +394,6 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     }
 
     async getFunctions(): Promise<FunctionInfo[]> {
-        await this.initConnectionsIfNeeded();
-
         const result = [];
 
         let nextPageToken;
@@ -460,8 +424,6 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     }
 
     async updateFunction(request: UpdateFunctionRequest) {
-        await this.initConnectionsIfNeeded();
-
         const createVersionRequest = CloudApiFunctionsService.CreateFunctionVersionRequest.fromPartial({
             functionId: request.id,
             runtime: request.runtime,
@@ -486,7 +448,6 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     }
 
     async createFunction(request: CreateFunctionRequest) {
-        await this.initConnectionsIfNeeded();
         let operation = await this.functions.create(CloudApiFunctionsService.CreateFunctionRequest.fromPartial({
             name: request.name,
             folderId: this.folderId,
@@ -523,8 +484,6 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     }
 
     async getMessageQueues(): Promise<MessageQueueInfo[]> {
-        await this.initConnectionsIfNeeded();
-        await this.initAwsSdkIfNeeded();
         const response = await this.ymq.listQueues().promise();
         const result = [];
 
@@ -546,9 +505,6 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     }
 
     async createMessageQueue(request: CreateMessageQueueRequest) {
-        await this.initConnectionsIfNeeded();
-        await this.initAwsSdkIfNeeded();
-
         const createResponse = await this.ymq.createQueue({ QueueName: request.name }).promise();
 
         const url = createResponse.QueueUrl;
@@ -574,16 +530,10 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     }
 
     async removeMessageQueue(url: string) {
-        await this.initConnectionsIfNeeded();
-        await this.initAwsSdkIfNeeded();
-
         return this.ymq.deleteQueue({ QueueUrl: url }).promise();
     }
 
     async getS3Buckets(): Promise<S3BucketInfo[]> {
-        await this.initConnectionsIfNeeded();
-        await this.initAwsSdkIfNeeded();
-
         const result: S3BucketInfo[] = [];
         const response = await this.s3.listBuckets().promise();
         const buckets = response.Buckets || [];
@@ -600,21 +550,14 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     }
 
     async createS3Bucket(request: CreateS3BucketRequest) {
-        await this.initConnectionsIfNeeded();
-        await this.initAwsSdkIfNeeded();
-
         return this.s3.createBucket({ Bucket: request.name }).promise();
     }
 
     async removeS3Bucket(name: string) {
-        await this.initConnectionsIfNeeded();
-        await this.initAwsSdkIfNeeded();
-
         return this.s3.deleteBucket({ Bucket: name }).promise();
     }
 
     async getContainerRegistries() {
-        await this.initConnectionsIfNeeded();
         const result = [];
 
         let nextPageToken: string | undefined;
@@ -642,7 +585,6 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     }
 
     async createContainerRegistry(request: CreateContainerRegistryRequest) {
-        await this.initConnectionsIfNeeded();
         let operation = await this.containerRegistryService.create(CloudApiRegistryService.CreateRegistryRequest.fromPartial({
             folderId: this.folderId,
             name: request.name,
@@ -663,8 +605,6 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     }
 
     async removeContainerRegistry(id: string) {
-        await this.initConnectionsIfNeeded();
-
         return this.containerRegistryService.delete(CloudApiRegistryService.DeleteRegistryRequest.fromPartial({
             registryId: id,
         }));
