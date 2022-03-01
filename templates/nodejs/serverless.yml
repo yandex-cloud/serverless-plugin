@@ -9,12 +9,11 @@ plugins:
   - "@yandex-cloud/serverless-plugin"
 
 package:
-  exclude:
-    - ./**
-  include:
-    - ./dist/*.js
-    - ./package.json
-    - ./package-lock.json
+  patterns:
+    - '!**'
+    - package.json
+    - package-lock.json
+    - dist/*.js
 
 functions:
   simple:
