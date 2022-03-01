@@ -7,7 +7,6 @@ interface MessageQueueState {
     id?: string;
     url?: string;
     name: string;
-    params: unknown;
 }
 
 export class MessageQueue {

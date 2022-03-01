@@ -5,8 +5,6 @@ import { YandexCloudProvider } from '../provider/provider';
 interface ContainerRegistryState {
     id?: string;
     name: string;
-    // TODO: specify type
-    params?: unknown;
 }
 
 export class ContainerRegistry {
