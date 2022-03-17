@@ -4,13 +4,23 @@ import fs from 'fs';
 import { getEnv, getEnvStrict } from './get-env';
 import { logger } from './logger';
 
-interface YcConfig {
-    token: string;
+interface YcConfigBase {
     cloudId: string;
     folderId: string;
 }
 
-const YC_TOKEN_ENV = 'YC_TOKEN';
+interface YcConfigOauth extends YcConfigBase{
+    token: string;
+}
+
+interface YcConfigIam extends YcConfigBase{
+    iamToken: string;
+}
+
+type YcConfig = YcConfigOauth | YcConfigIam;
+
+const YC_OAUTH_TOKEN_ENV = 'YC_OAUTH_TOKEN';
+const YC_IAM_TOKEN_ENV = 'YC_IAM_TOKEN';
 const YC_CLOUD_ID = 'YC_CLOUD_ID';
 const YC_FOLDER_ID = 'YC_FOLDER_ID';
 const YC_CONFIG_PATH = path.join(getEnvStrict('HOME'), '.config/yandex-cloud/config.yaml');
@@ -38,18 +48,30 @@ const readYcConfigFile = () => {
 };
 
 export const getYcConfig = (): YcConfig => {
-    const tokenFromEnv = getEnv(YC_TOKEN_ENV);
+    const oauthTokenFromEnv = getEnv(YC_OAUTH_TOKEN_ENV);
+    const iamTokenFromEnv = getEnv(YC_IAM_TOKEN_ENV);
     const cloudIdFromEnv = getEnv(YC_CLOUD_ID);
     const folderIdFromEnv = getEnv(YC_FOLDER_ID);
+    const isTokenDefined = Boolean(iamTokenFromEnv || oauthTokenFromEnv);
 
-    if (tokenFromEnv && cloudIdFromEnv && folderIdFromEnv) {
+    if (isTokenDefined && cloudIdFromEnv && folderIdFromEnv) {
         logger.info('Found YC configuration in environment variables, using it');
 
-        return {
-            token: tokenFromEnv,
-            cloudId: cloudIdFromEnv,
-            folderId: folderIdFromEnv,
-        };
+        if (iamTokenFromEnv) {
+            return {
+                iamToken: iamTokenFromEnv,
+                cloudId: cloudIdFromEnv,
+                folderId: folderIdFromEnv,
+            };
+        }
+
+        if (oauthTokenFromEnv) {
+            return {
+                token: oauthTokenFromEnv,
+                cloudId: cloudIdFromEnv,
+                folderId: folderIdFromEnv,
+            };
+        }
     }
 
     logger.info(`YC configuration in environment variables not found, reading yc config file: ${YC_CONFIG_PATH}`);
