@@ -19,7 +19,7 @@ Now you can create new project from template provided by this plugin:
 
 Before you deploy your first functions using Serverless, you need to configure Yandex.Cloud credentials. There are two ways to do it:
 - Install the `yc` command-line tool and use the setup wizard to provide all required parameters. All required guides and in-depth documentation is available at [Yandex.Cloud website](https://cloud.yandex.com/docs/cli/quickstart).
-- Provide `YC_TOKEN`, `YC_CLOUD_ID` and `YC_FOLDER_ID` environment variables
+- Provide `YC_OAUTH_TOKEN` (or `YC_IAM_TOKEN`), `YC_CLOUD_ID` and `YC_FOLDER_ID` environment variables
 - If you are going to create/edit YMQ or S3 buckets, you need to provide `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` environment variables. [How to create static access keys](https://cloud.yandex.com/en-ru/docs/iam/operations/sa/create-access-key)
 
 To deploy your project use:

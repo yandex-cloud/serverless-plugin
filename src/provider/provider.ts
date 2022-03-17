@@ -79,11 +79,16 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
 
         // Init YC API client
         const config = getYcConfig();
-        const { token, cloudId, folderId } = config;
 
-        this.session = new Session({ oauthToken: token });
-        this.folderId = folderId;
-        this.cloudId = cloudId;
+        const sessionConfig = 'token' in config ? {
+            oauthToken: config.token,
+        } : {
+            iamToken: config.iamToken,
+        };
+
+        this.session = new Session(sessionConfig);
+        this.folderId = config.folderId;
+        this.cloudId = config.cloudId;
 
         this.triggers = this.session.client(serviceClients.TriggerServiceClient);
         this.serviceAccounts = this.session.client(serviceClients.ServiceAccountServiceClient);
