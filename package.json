@@ -1,11 +1,14 @@
 {
-  "name": "serverless-yandex-cloud",
-  "version": "0.2.0",
+  "name": "@yandex-cloud/serverless-plugin",
+  "version": "1.0.0-beta.4",
   "description": "Provider plugin for the Serverless Framework which adds support for Yandex Cloud Functions.",
   "keywords": [
     "yandex-cloud",
     "cloud",
     "serverless"
+  ],
+  "files": [
+    "dist"
   ],
   "repository": {
     "type": "git",
@@ -13,31 +16,55 @@
   },
   "author": "Yandex LLC",
   "license": "MIT",
-  "main": "index.js",
+  "main": "dist/index.js",
   "bugs": {
     "url": "https://github.com/yandex-cloud/serverless-plugin/issues"
   },
   "homepage": "https://github.com/yandex-cloud/serverless-plugin#readme",
   "engines": {
-    "node": ">=10.0.0"
+    "node": ">=12.0.0"
   },
   "dependencies": {
+    "@yandex-cloud/nodejs-sdk": "^2.0.0",
     "aws-sdk": "^2.695.0",
-    "yaml": "^1.8.3",
-    "yandex-cloud": "^1.4.3"
+    "axios": "^0.24.0",
+    "bind-decorator": "^1.0.11",
+    "lodash": "^4.17.21",
+    "log4js": "^6.3.0",
+    "yaml": "^1.8.3"
   },
   "devDependencies": {
     "@commitlint/cli": "^16.0.1",
     "@commitlint/config-conventional": "^16.0.0",
     "@semantic-release/git": "^10.0.1",
+    "@types/jest": "^27.4.0",
+    "@types/json-schema": "^7.0.9",
+    "@types/lodash": "^4.14.178",
+    "@types/serverless": "^3.0.1",
+    "eslint": "^8.5.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-airbnb-typescript": "^16.1.0",
+    "eslint-plugin-import": "^2.25.3",
+    "eslint-plugin-prefer-arrow-functions": "^3.1.4",
+    "eslint-plugin-unicorn": "^39.0.0",
     "husky": "^7.0.4",
     "jest": "^27.4.5",
-    "prettier": "^2.0.5",
-    "semantic-release": "^18.0.1"
+    "semantic-release": "^18.0.1",
+    "ts-jest": "^27.1.2",
+    "ts-node": "^10.4.0",
+    "typescript": "^4.5.4"
+  },
+  "peerDependencies": {
+    "serverless": "^3.5.1"
   },
   "scripts": {
-    "test": "jest",
-    "prettier": "prettier --config .prettierrc.json --write index.js lib/**/*.js",
-    "prepare": "husky install"
+    "build": "tsc -p .",
+    "test": "jest -c config/jest.ts",
+    "lint": "eslint src",
+    "prepare": "husky install",
+    "prepublishOnly": "npm run build"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

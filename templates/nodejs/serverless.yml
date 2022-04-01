@@ -1,30 +1,30 @@
 service: yandex-cloud-nodejs
-name: yandex-cloud-template
-frameworkVersion: ">=1.1.0 <2.0.0"
+frameworkVersion: "3"
 
 provider:
   name: yandex-cloud
-  runtime: nodejs12
+  runtime: nodejs16
 
 plugins:
-  - serverless-yandex-cloud
+  - "@yandex-cloud/serverless-plugin"
 
 package:
-  exclude:
-    - ./**
-  include:
-    - ./*.js
+  patterns:
+    - '!**'
+    - package.json
+    - package-lock.json
+    - dist/*.js
 
 functions:
   simple:
-    handler: index.hello
-    memory: 128
+    handler: dist/index.hello
+    memorySize: 128
     timeout: 5
     account: function-sa
 
   timer:
-    handler: index.hello
-    memory: 128
+    handler: dist/index.hello
+    memorySize: 128
     timeout: 5
     events:
       - cron:
