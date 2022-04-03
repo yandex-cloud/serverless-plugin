@@ -1,4 +1,4 @@
-[![npm](https://img.shields.io/npm/v/serverless-yandex-cloud.svg)](https://www.npmjs.com/package/serverless-yandex-cloud)
+[![npm](https://img.shields.io/npm/v/@yandex-cloud/serverless-plugin)](https://www.npmjs.com/package/@yandex-cloud/serverless-plugin)
 [![License](https://img.shields.io/github/license/yandex-cloud/serverless-plugin.svg)](https://github.com/yandex-cloud/serverless-plugin/blob/master/LICENSE)
 
 
