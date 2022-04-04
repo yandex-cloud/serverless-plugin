@@ -1,7 +1,8 @@
 import path from 'path';
 import yaml from 'yaml';
 import fs from 'fs';
-import { getEnv, getEnvStrict } from './get-env';
+import * as os from 'os';
+import { getEnv } from './get-env';
 import { logger } from './logger';
 
 interface YcConfigBase {
@@ -23,7 +24,7 @@ const YC_OAUTH_TOKEN_ENV = 'YC_OAUTH_TOKEN';
 const YC_IAM_TOKEN_ENV = 'YC_IAM_TOKEN';
 const YC_CLOUD_ID = 'YC_CLOUD_ID';
 const YC_FOLDER_ID = 'YC_FOLDER_ID';
-const YC_CONFIG_PATH = path.join(getEnvStrict('HOME'), '.config/yandex-cloud/config.yaml');
+const YC_CONFIG_PATH = path.join(os.homedir(), '.config/yandex-cloud/config.yaml');
 
 const readYcConfigFile = () => {
     let config;
