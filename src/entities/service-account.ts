@@ -1,6 +1,7 @@
 import Serverless from 'serverless';
 
 import { YandexCloudProvider } from '../provider/provider';
+import { log } from '../utils/logging';
 
 interface ServiceAccountState {
     id?: string;
@@ -9,12 +10,10 @@ interface ServiceAccountState {
 }
 
 export class ServiceAccount {
+    public id?: string;
     private readonly serverless: Serverless;
     private readonly initialState?: ServiceAccountState;
-
     private newState?: ServiceAccountState;
-
-    public id?: string;
 
     constructor(serverless: Serverless, initial?: ServiceAccountState) {
         this.serverless = serverless;
@@ -36,31 +35,24 @@ export class ServiceAccount {
         if (this.initialState) {
             if (
                 (this.initialState.roles
-                && this.initialState.roles.length === this.newState?.roles.length
-                && this.initialState.roles.every((ir) => this.newState?.roles.find((nr) => nr === ir)))
+                    && this.initialState.roles.length === this.newState?.roles.length
+                    && this.initialState.roles.every((ir) => this.newState?.roles.find((nr) => nr === ir)))
                 || !this.initialState?.id
             ) {
                 return;
             }
-            try {
-                await provider.removeServiceAccount(this.initialState.id);
 
-                this.serverless.cli.log(`Service account removed "${this.initialState.name}"`);
-            } catch (error) {
-                this.serverless.cli.log(`${error}\nFailed to remove service account "${this.initialState.name}"`);
-            }
+            await provider.removeServiceAccount(this.initialState.id);
+
+            log.success(`Service account removed "${this.initialState.name}"`);
         }
 
-        try {
-            const response = await provider.createServiceAccount({
-                name: this.newState.name,
-                roles: this.newState?.roles,
-            });
+        const response = await provider.createServiceAccount({
+            name: this.newState.name,
+            roles: this.newState?.roles,
+        });
 
-            this.id = response.id;
-            this.serverless.cli.log(`Service account created\n${this.newState.name}: ${response.id}`);
-        } catch (error) {
-            this.serverless.cli.log(`${error}\nFailed to create service account "${this.newState.name}"`);
-        }
+        this.id = response?.id;
+        log.success(`Service account created\n${this.newState.name}: ${response?.id}`);
     }
 }

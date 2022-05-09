@@ -2,6 +2,7 @@ import Serverless from 'serverless';
 
 import { YandexCloudProvider } from '../provider/provider';
 import { MessageQueueInfo } from '../types/common';
+import { log } from '../utils/logging';
 
 interface MessageQueueState {
     id?: string;
@@ -10,13 +11,11 @@ interface MessageQueueState {
 }
 
 export class MessageQueue {
-    private readonly serverless: Serverless;
-    private readonly initialState?: MessageQueueInfo;
-
-    private newState?: MessageQueueState;
-
     public id?: string;
     public url?: string;
+    private readonly serverless: Serverless;
+    private readonly initialState?: MessageQueueInfo;
+    private newState?: MessageQueueState;
 
     constructor(serverless: Serverless, initial?: MessageQueueInfo) {
         this.serverless = serverless;
@@ -40,16 +39,12 @@ export class MessageQueue {
             return;
         }
 
-        try {
-            const response = await provider.createMessageQueue({
-                name: this.newState.name,
-            });
+        const response = await provider.createMessageQueue({
+            name: this.newState.name,
+        });
 
-            this.id = response.id;
-            this.url = response.url;
-            this.serverless.cli.log(`Message queue created\n${this.newState.name}: ${response.url}`);
-        } catch (error) {
-            this.serverless.cli.log(`${error}\nFailed to create message queue "${this.newState.name}"`);
-        }
+        this.id = response.id;
+        this.url = response.url;
+        log.success(`Message queue created\n${this.newState.name}: ${response.url}`);
     }
 }

@@ -1,8 +1,14 @@
 import {
-    cloudApi, serviceClients, Session, WrappedServiceClientType, waitForOperation, decodeMessage,
+    cloudApi,
+    decodeMessage,
+    serviceClients,
+    Session,
+    waitForOperation,
+    WrappedServiceClientType,
 } from '@yandex-cloud/nodejs-sdk';
 import Serverless from 'serverless';
 import ServerlessPlugin from 'serverless/classes/Plugin';
+
 // @ts-ignore TODO: fix @types/serverless and remove this ignore
 import ServerlessAwsProvider from 'serverless/lib/plugins/aws/provider';
 import type ServerlessAwsProviderType from 'serverless/aws';
@@ -11,6 +17,7 @@ import axios from 'axios';
 import * as lodash from 'lodash';
 import bind from 'bind-decorator';
 import {
+    CreateApiGatewayRequest,
     CreateContainerRegistryRequest,
     CreateCronTriggerRequest,
     CreateCrTriggerRequest,
@@ -21,21 +28,36 @@ import {
     CreateServiceAccountRequest,
     CreateYmqTriggerRequest,
     InvokeFunctionRequest,
+    UpdateApiGatewayRequest,
     UpdateFunctionRequest,
 } from './types';
 
 import {
-    FunctionInfo, MessageQueueInfo, S3BucketInfo, ServiceAccountInfo, TriggerInfo,
+    ApiGatewayInfo,
+    FunctionInfo,
+    MessageQueueInfo,
+    S3BucketInfo,
+    ServiceAccountInfo,
+    TriggerInfo,
 } from '../types/common';
 import { fileToBase64 } from './helpers';
 import { getYcConfig } from '../utils/yc-config';
 import { getEnv } from '../utils/get-env';
+import { Operation } from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/operation/operation';
+import { Any } from '@yandex-cloud/nodejs-sdk/dist/generated/google/protobuf/any';
+import { Status } from '@yandex-cloud/nodejs-sdk/dist/generated/google/rpc/status';
+import { log, ProgressReporter } from '../utils/logging';
+import {
+    GetOpenapiSpecResponse,
+} from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/serverless/apigateway/v1/apigateway_service';
+import yaml from 'yaml';
 
 const PROVIDER_NAME = 'yandex-cloud';
 
 const {
     containerregistry: { registry_service: CloudApiRegistryService },
     serverless: {
+        apigateway_service: CloudApiApiGatewayService,
         functions_function_service: CloudApiFunctionsService,
         triggers_trigger_service: CloudApiTriggersService,
         triggers_trigger: CloudApiTriggers,
@@ -46,28 +68,26 @@ const {
 
 const AwsProvider = ServerlessAwsProvider as typeof ServerlessAwsProviderType;
 
+type SuccessfulOperation = Operation & {response: Any}
+type FailedOperation = Operation & {response: undefined; error: Status}
+
 export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin {
     hooks: ServerlessPlugin.Hooks;
     commands?: ServerlessPlugin.Commands | undefined;
     variableResolvers?: ServerlessPlugin.VariableResolvers | undefined;
-
     private readonly serverless: Serverless;
     private readonly options: Serverless.Options;
-
     private session: Session;
     private folderId: string;
     private cloudId: string;
     private triggers: WrappedServiceClientType<typeof serviceClients.TriggerServiceClient.service>;
     private serviceAccounts: WrappedServiceClientType<typeof serviceClients.ServiceAccountServiceClient.service>;
+    private apiGateways: WrappedServiceClientType<typeof serviceClients.ApiGatewayServiceClient.service>;
     private functions: WrappedServiceClientType<typeof serviceClients.FunctionServiceClient.service>;
     private folders: WrappedServiceClientType<typeof serviceClients.FolderServiceClient.service>;
     private containerRegistryService: WrappedServiceClientType<typeof serviceClients.RegistryServiceClient.service>;
     private ymq: AWS.SQS;
     private s3: AWS.S3;
-
-    static getProviderName() {
-        return PROVIDER_NAME;
-    }
 
     constructor(serverless: Serverless, options: Serverless.Options) {
         super(serverless, options);
@@ -90,6 +110,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
         this.folderId = config.folderId;
         this.cloudId = config.cloudId;
 
+        this.apiGateways = this.session.client(serviceClients.ApiGatewayServiceClient);
         this.triggers = this.session.client(serviceClients.TriggerServiceClient);
         this.serviceAccounts = this.session.client(serviceClients.ServiceAccountServiceClient);
         this.functions = this.session.client(serviceClients.FunctionServiceClient);
@@ -111,6 +132,10 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
             endpoint: 'https://storage.yandexcloud.net',
             ...awsConfig,
         });
+    }
+
+    static getProviderName() {
+        return PROVIDER_NAME;
     }
 
     makeInvokeFunctionWithRetryParams(request: InvokeFunctionRequest) {
@@ -136,7 +161,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
 
     @bind
     async createCronTrigger(request: CreateCronTriggerRequest) {
-        const operation = await this.triggers.create(CloudApiTriggersService.CreateTriggerRequest.fromPartial({
+        let operation = await this.triggers.create(CloudApiTriggersService.CreateTriggerRequest.fromPartial({
             folderId: this.folderId,
             name: request.name,
             rule: {
@@ -147,7 +172,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
             },
         }));
 
-        return waitForOperation(operation, this.session);
+        return this.check(operation);
     }
 
     convertS3EvenType(type: string) {
@@ -160,7 +185,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
 
     @bind
     async createS3Trigger(request: CreateS3TriggerRequest) {
-        const operation = await this.triggers.create(CloudApiTriggersService.CreateTriggerRequest.fromPartial({
+        let operation = await this.triggers.create(CloudApiTriggersService.CreateTriggerRequest.fromPartial({
             folderId: this.folderId,
             name: request.name,
             rule: {
@@ -174,12 +199,12 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
             },
         }));
 
-        return waitForOperation(operation, this.session);
+        return this.check(operation);
     }
 
     @bind
     async createYMQTrigger(request: CreateYmqTriggerRequest) {
-        const operation = await this.triggers.create(CloudApiTriggersService.CreateTriggerRequest.fromPartial({
+        let operation = await this.triggers.create(CloudApiTriggersService.CreateTriggerRequest.fromPartial({
             folderId: this.folderId,
             name: request.name,
             rule: {
@@ -198,7 +223,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
             },
         }));
 
-        return waitForOperation(operation, this.session);
+        return this.check(operation);
     }
 
     convertCREventType(type: string) {
@@ -212,7 +237,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
 
     @bind
     async createCRTrigger(request: CreateCrTriggerRequest) {
-        const operation = await this.triggers.create(CloudApiTriggersService.CreateTriggerRequest.fromPartial({
+        let operation = await this.triggers.create(CloudApiTriggersService.CreateTriggerRequest.fromPartial({
             folderId: this.folderId,
             name: request.name,
             rule: {
@@ -227,21 +252,21 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
             },
         }));
 
-        return waitForOperation(operation, this.session);
+        return this.check(operation);
     }
 
     async removeTrigger(id: string) {
-        const operation = await this.triggers.delete(CloudApiTriggersService.DeleteTriggerRequest.fromPartial({
+        let operation = await this.triggers.delete(CloudApiTriggersService.DeleteTriggerRequest.fromPartial({
             triggerId: id,
         }));
 
-        return waitForOperation(operation, this.session);
+        return this.check(operation);
     }
 
     async getTriggers(): Promise<TriggerInfo[]> {
         const result = [];
 
-        let nextPageToken;
+        let nextPageToken = undefined;
 
         type ListTriggersResponse = cloudApi.serverless.triggers_trigger_service.ListTriggersResponse;
 
@@ -272,7 +297,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
         const access = await this.getAccessBindings();
 
         const result = [];
-        let nextPageToken;
+        let nextPageToken = undefined;
 
         type ListServiceAccountsResponse = cloudApi.iam.service_account_service.ListServiceAccountsResponse;
 
@@ -303,7 +328,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     async getAccessBindings() {
         const result = [];
 
-        let nextPageToken;
+        let nextPageToken = undefined;
 
         type ListAccessBindingsResponse = cloudApi.access.access.ListAccessBindingsResponse;
 
@@ -350,35 +375,111 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
             });
         }
 
-        const operation = await this.folders.updateAccessBindings(CloudApiAccess.UpdateAccessBindingsRequest.fromPartial({
+        let operation = await this.folders.updateAccessBindings(CloudApiAccess.UpdateAccessBindingsRequest.fromPartial({
             resourceId: this.folderId,
             accessBindingDeltas,
         }));
 
-        await waitForOperation(operation, this.session);
+        return this.check(operation);
     }
 
     async createServiceAccount(request: CreateServiceAccountRequest) {
-        const operation = await this.serviceAccounts.create(CloudApiServiceAccountService.CreateServiceAccountRequest.fromPartial({
+        let operation = await this.serviceAccounts.create(CloudApiServiceAccountService.CreateServiceAccountRequest.fromPartial({
             folderId: this.folderId,
             name: request.name,
         }));
-        const response = await waitForOperation(operation, this.session);
-
-        if (!response.response) {
-            throw new Error('Service Account create operation returned no result');
-        }
-        const sa = decodeMessage<cloudApi.iam.service_account.ServiceAccount>(response.response);
+        const successfulOperation = await this.check(operation);
+        const sa = decodeMessage<cloudApi.iam.service_account.ServiceAccount>(successfulOperation.response);
 
         await this.updateAccessBindings(sa.id, request.roles);
 
         return sa;
+
     }
 
     async removeServiceAccount(id: string) {
         return this.serviceAccounts.delete(CloudApiServiceAccountService.DeleteServiceAccountRequest.fromPartial({
             serviceAccountId: id,
         }));
+    }
+
+    async createApiGateway(request: CreateApiGatewayRequest) {
+        log.debug(yaml.stringify(JSON.parse(request.openapiSpec)))
+        let operation = await this.apiGateways.create(CloudApiApiGatewayService.CreateApiGatewayRequest.fromPartial({
+            name: request.name,
+            folderId: this.folderId,
+            openapiSpec: request.openapiSpec,
+            // description: request.description,
+        }));
+
+        const successfulOperation = await this.check(operation);
+
+        const apigw = decodeMessage<cloudApi.serverless.apigateway.ApiGateway>(successfulOperation.response);
+
+        return {
+            id: apigw.id,
+            name: request.name,
+            openapiSpec: request.openapiSpec,
+        };
+    }
+
+    async updateApiGateway(request: UpdateApiGatewayRequest) {
+        let operation = await this.apiGateways.update(CloudApiApiGatewayService.UpdateApiGatewayRequest.fromPartial({
+            apiGatewayId: request.id,
+            openapiSpec: request.openapiSpec,
+            updateMask: {
+                paths: [
+                    'openapi_spec',
+                ],
+            },
+        }));
+
+        const successfulOperation = await this.check(operation);
+
+        const apigw = decodeMessage<cloudApi.serverless.apigateway.ApiGateway>(successfulOperation.response);
+
+        request.id = apigw.id;
+
+        return request;
+    }
+
+    async removeApiGateway(id: string) {
+        let operation = await this.apiGateways.delete(CloudApiApiGatewayService.DeleteApiGatewayRequest.fromPartial({
+            apiGatewayId: id,
+        }));
+
+        return this.check(operation);
+    }
+
+    async getApiGateway(): Promise<ApiGatewayInfo> {
+        type ListApiGatewayResponse = cloudApi.serverless.apigateway_service.ListApiGatewayResponse;
+        const name = `${this.serverless.service.getServiceName()}-${this.getStage()}`;
+        const listResponse: ListApiGatewayResponse = await this.apiGateways.list(
+            CloudApiApiGatewayService.ListApiGatewayRequest.fromPartial({
+                folderId: this.folderId,
+                filter: `name = "${name}"`,
+            }),
+        );
+
+        if (listResponse.apiGateways.length != 0) {
+            const apiGateway = listResponse.apiGateways[0];
+            const specResponse: GetOpenapiSpecResponse = await this.apiGateways.getOpenapiSpec(
+                CloudApiApiGatewayService.GetOpenapiSpecRequest.fromPartial({
+                    apiGatewayId: apiGateway.id,
+                }),
+            );
+            return {
+                name: apiGateway.name,
+                id: apiGateway.id,
+                domains: apiGateway.attachedDomains,
+                openapiSpec: specResponse.openapiSpec,
+            };
+        }
+
+
+        return {
+            name,
+        };
     }
 
     async removeFunction(id: string) {
@@ -401,7 +502,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     async getFunctions(): Promise<FunctionInfo[]> {
         const result: FunctionInfo[] = [];
 
-        let nextPageToken;
+        let nextPageToken = undefined;
 
         type ListFunctionsResponse = cloudApi.serverless.functions_function_service.ListFunctionsResponse;
 
@@ -428,7 +529,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
         return result;
     }
 
-    async updateFunction(request: UpdateFunctionRequest) {
+    async updateFunction(request: UpdateFunctionRequest, progress?: ProgressReporter) {
         const createVersionRequest = CloudApiFunctionsService.CreateFunctionVersionRequest.fromPartial({
             functionId: request.id,
             runtime: request.runtime,
@@ -441,10 +542,10 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
             content: Buffer.from(fileToBase64(request.code), 'base64'),
             environment: request.environment,
         });
+        progress?.update(`Creating new version of function '${request.name}'`);
+        let operation = await this.functions.createVersion(createVersionRequest);
+        return this.check(operation);
 
-        const operation = await this.functions.createVersion(createVersionRequest);
-
-        return waitForOperation(operation, this.session);
     }
 
     // noinspection JSUnusedLocalSymbols
@@ -452,25 +553,23 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
         throw new Error('not implemented');
     }
 
-    async createFunction(request: CreateFunctionRequest) {
+    async createFunction(request: CreateFunctionRequest, progress?: ProgressReporter) {
+        progress?.update(`Creating function '${request.name}'`);
         let operation = await this.functions.create(CloudApiFunctionsService.CreateFunctionRequest.fromPartial({
             name: request.name,
             folderId: this.folderId,
         }));
 
-        operation = await waitForOperation(operation, this.session);
+        const successfulOperation = await this.check(operation);
 
-        if (!operation.response) {
-            throw new Error('Create function operation has no result');
-        }
-
-        const fn = decodeMessage<cloudApi.serverless.functions_function.Function>(operation.response);
+        const fn = decodeMessage<cloudApi.serverless.functions_function.Function>(successfulOperation.response);
 
         request.id = fn.id;
 
-        await this.updateFunction(request);
+        await this.updateFunction(request, progress);
 
         return request;
+
     }
 
     async getMessageQueueId(url: string) {
@@ -502,7 +601,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
                     url,
                 });
             } else {
-                this.serverless.cli.log(`Unable to resolve ID of Message Queue ${url}`);
+                log.warning(`Unable to resolve ID of Message Queue ${url}`);
             }
         }
 
@@ -565,7 +664,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     async getContainerRegistries() {
         const result = [];
 
-        let nextPageToken: string | undefined;
+        let nextPageToken: string | undefined = undefined;
 
         do {
             const request = CloudApiRegistryService.ListRegistriesRequest.fromJSON({
@@ -595,23 +694,33 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
             name: request.name,
         }));
 
-        operation = await waitForOperation(operation, this.session);
+        const successfulOperation = await this.check(operation);
 
-        if (!operation.response) {
-            throw new Error('Create registry operation returned no result');
-        }
-
-        const data = decodeMessage<cloudApi.containerregistry.registry.Registry>(operation.response);
-
+        const data = decodeMessage<cloudApi.containerregistry.registry.Registry>(successfulOperation.response);
         return {
             id: data.id,
             name: request.name,
         };
+
     }
 
     async removeContainerRegistry(id: string) {
-        return this.containerRegistryService.delete(CloudApiRegistryService.DeleteRegistryRequest.fromPartial({
+        let operation = await this.containerRegistryService.delete(CloudApiRegistryService.DeleteRegistryRequest.fromPartial({
             registryId: id,
         }));
+        return this.check(operation);
+    }
+
+    private async check(operation: Operation): Promise<SuccessfulOperation> {
+        try {
+            operation = (await waitForOperation(operation, this.session));
+            return operation as SuccessfulOperation;
+        } catch (err: any) {
+            const errorOperation = err as FailedOperation;
+            errorOperation.error.details.forEach(x => {
+                log.debug(JSON.stringify(x));
+            });
+            throw new Error(errorOperation.error.message);
+        }
     }
 }

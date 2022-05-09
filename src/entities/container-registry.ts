@@ -1,6 +1,7 @@
 import Serverless from 'serverless';
 
 import { YandexCloudProvider } from '../provider/provider';
+import { log } from '../utils/logging';
 
 interface ContainerRegistryState {
     id?: string;
@@ -8,12 +9,10 @@ interface ContainerRegistryState {
 }
 
 export class ContainerRegistry {
+    public id?: string;
     private readonly serverless: Serverless;
     private readonly initialState?: ContainerRegistryState;
-
     private newState?: ContainerRegistryState;
-
-    public id?: string;
 
     constructor(serverless: Serverless, initial?: ContainerRegistryState) {
         this.serverless = serverless;
@@ -27,7 +26,6 @@ export class ContainerRegistry {
 
     async sync() {
         const provider = this.serverless.getProvider('yandex-cloud') as YandexCloudProvider;
-
         if (!this.newState) {
             return;
         }
@@ -36,14 +34,10 @@ export class ContainerRegistry {
             return;
         }
 
-        try {
-            const response = await provider.createContainerRegistry({ name: this.newState.name });
+        const response = await provider.createContainerRegistry({ name: this.newState.name });
 
-            this.id = response.id;
-            this.serverless.cli.log(`Container Registry created "${this.newState.name}"`);
-        } catch (error) {
-            this.serverless.cli.log(`${error}
-      Failed to create Container Registry "${this.newState.name}"`);
-        }
+        this.id = response?.id;
+        log.success(`Container Registry created "${this.newState.name}"`);
+
     }
 }

@@ -8,8 +8,10 @@ import { YandexCloudInvoke } from './invoke/invoke';
 import { YandexCloudInfo } from './info/info';
 import { YandexCloudLogs } from './logs/logs';
 import { extendConfigSchema } from './extend-config-schema';
+import ServerlessPlugin from 'serverless/classes/Plugin';
 
-class YandexCloudServerlessPlugin {
+class YandexCloudServerlessPlugin implements ServerlessPlugin {
+    hooks: ServerlessPlugin.Hooks = {};
     private readonly serverless: Serverless;
     private readonly options: Serverless.Options;
 

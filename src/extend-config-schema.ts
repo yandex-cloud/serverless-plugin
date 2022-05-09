@@ -1,8 +1,110 @@
 import Serverless from 'serverless';
-import type { JSONSchema7 } from 'json-schema';
+import type { JSONSchema7, JSONSchema7Definition } from 'json-schema';
 
 import { YandexCloudProvider } from './provider/provider';
-import { TriggerType } from './types/common';
+import { EventType, TriggerType } from './types/common';
+
+
+const requestParametersSchema: JSONSchema7 = {
+    type: 'object',
+    additionalProperties: {
+        anyOf: [
+            { type: 'boolean' },
+        ],
+    },
+};
+
+const requestSchema: JSONSchema7 = {
+    type: 'object',
+    properties: {
+        parameters: {
+            type: 'object',
+            properties: {
+                querystrings: requestParametersSchema,
+                headers: requestParametersSchema,
+                paths: requestParametersSchema,
+            },
+            additionalProperties: false,
+        },
+        // schemas: {
+        //     type: 'object',
+        //     additionalProperties: { anyOf: [{ type: 'object' }, { type: 'string' }] },
+        // },
+    },
+    additionalProperties: false,
+};
+
+
+const responseSchema: JSONSchema7 = {
+    type: 'object',
+    properties: {
+        headers: {
+            type: 'object',
+            additionalProperties: { type: 'string' },
+        },
+        template: { type: 'string' },
+        statusCodes: {
+            type: 'object',
+            propertyNames: {
+                type: 'string',
+                pattern: '^\\d{3}$',
+            },
+            additionalProperties: {
+                type: 'object',
+                properties: {
+                    headers: {
+                        type: 'object',
+                        additionalProperties: { type: 'string' },
+                    },
+                    pattern: { type: 'string' },
+                    template: {
+                        anyOf: [
+                            { type: 'string' },
+                            {
+                                type: 'object',
+                                additionalProperties: { type: 'string' },
+                            },
+                        ],
+                    },
+                },
+                additionalProperties: false,
+            },
+        },
+    },
+    additionalProperties: false,
+};
+
+
+const schemaHttpTrigger: JSONSchema7 = {
+    type: 'object',
+    properties: {
+        path: { type: 'string' },
+        method: {
+            enum: [
+                'get',
+                'put',
+                'post',
+                'delete',
+                'options',
+                'head',
+                'patch',
+                'trace',
+                'any',
+            ],
+        },
+        authorizer: { type: 'string' },
+        eventFormat: {
+            enum: ['1.0', '0.1'],
+        },
+        context: {
+            type: 'object',
+        },
+        request: requestSchema,
+        // response: responseSchema,
+    },
+    required: ['path', 'method'],
+};
+
 
 const schemaCronTrigger: JSONSchema7 = {
     type: 'object',
@@ -169,9 +271,9 @@ export const extendConfigSchema = (sls: Serverless) => {
                     'python37',
                     'python38',
                     'python39',
-                    'go114',
-                    'go116',
-                    'go117',
+                    'golang114',
+                    'golang116',
+                    'golang117',
                     'java11',
                     'dotnet31',
                     'bash',
@@ -202,13 +304,62 @@ export const extendConfigSchema = (sls: Serverless) => {
                 },
                 additionalProperties: false,
             },
+            apiKeyFunctionAuthorizer: {
+                type: 'object',
+                properties: {
+                    type: { enum: ['apiKey'] },
+                    in: { enum: ['header', 'query', 'cookie'] },
+                    name: { type: 'string' },
+                    function: { type: 'string' },
+                },
+                required: ['type', 'in', 'name', 'function'],
+            },
+            httpFunctionAuthorizer: {
+                type: 'object',
+                properties: {
+                    type: { enum: ['http'] },
+                    scheme: { enum: ['bearer'] },
+                    function: { type: 'string' },
+                    bearerFormat: { type: 'string' },
+                },
+                required: ['type', 'scheme', 'function'],
+            },
+            functionAuthorizer: {
+                type: 'object',
+                oneOf: [
+                    {
+                        '$ref': '#/definitions/apiKeyFunctionAuthorizer',
+                    },
+                    {
+                        '$ref': '#/definitions/httpFunctionAuthorizer',
+                    },
+                ],
+            },
+            authorizers: {
+                type: 'object',
+                patternProperties: {
+                    '^[a-z][a-z0-9_.]*$': { '$ref': '#/definitions/functionAuthorizer' },
+                },
+            },
+            apiGatewayConfig: {
+                type: 'object',
+                properties: {
+                    payload: {
+                        enum: [
+                            '0.1',
+                            '1.0',
+                        ],
+                    },
+                    authorizers: { '$ref': '#/definitions/authorizers' },
+                },
+            },
         },
-
         provider: {
             properties: {
                 credentials: { type: 'string' },
                 project: { type: 'string' },
                 region: { $ref: '#/definitions/cloudFunctionRegion' },
+                httpApi: { $ref: '#/definitions/apiGatewayConfig' },
                 runtime: { $ref: '#/definitions/cloudFunctionRuntime' }, // Can be overridden by function configuration
                 memorySize: { $ref: '#/definitions/cloudFunctionMemory' }, // Can be overridden by function configuration
                 timeout: { type: 'string' }, // Can be overridden by function configuration
@@ -234,6 +385,12 @@ export const extendConfigSchema = (sls: Serverless) => {
     sls.configSchemaHandler.defineTopLevelProperty(
         'resources',
         schemaResources as Record<string, unknown>,
+    );
+
+    sls.configSchemaHandler.defineFunctionEvent(
+        YandexCloudProvider.getProviderName(),
+        EventType.HTTP,
+        schemaHttpTrigger as Record<string, unknown>,
     );
 
     sls.configSchemaHandler.defineFunctionEvent(
