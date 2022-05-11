@@ -9,6 +9,7 @@ import {
     HttpMethodAliases,
     HttpMethods,
     IntegrationType,
+    PayloadFormatVersion,
     RequestParameters,
     ServerlessFunc,
     YcPathItemObject,
@@ -36,7 +37,7 @@ interface FunctionIntegration {
         tag: string;
         payload_format_version: string;
         service_account_id?: string
-        context: object
+        context?: object
     };
 }
 
@@ -136,11 +137,11 @@ export class YCFunction {
         if (!event.http || typeof event.http === 'string' || this.id === undefined) {
             return;
         }
-        const providerConfig: ProviderConfig = this.serverless.service.provider as any;
+        const providerConfig: ProviderConfig | undefined = this.serverless.service?.provider as any;
 
         const { http } = event;
         const serviceAccountId = this.newState?.params.account ? this.deploy.getServiceAccountId(this.newState?.params.account) : undefined;
-        const payloadFormatVersion = http.eventFormat || providerConfig.httpApi.payload;
+        const payloadFormatVersion = http.eventFormat || (providerConfig?.httpApi.payload ?? PayloadFormatVersion.V0);
         const operation: OperationObject<FunctionIntegration> = {
             'x-yc-apigateway-integration': {
                 type: IntegrationType.cloud_functions,
@@ -148,7 +149,7 @@ export class YCFunction {
                 tag: '$latest',
                 payload_format_version: payloadFormatVersion,
                 service_account_id: serviceAccountId,
-                context: http.context ?? {},
+                context: http.context,
             },
             responses: {
                 '200': {

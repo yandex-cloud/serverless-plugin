@@ -5,7 +5,9 @@ jest.mock('../utils/logging', () => ({
     log: {
         error: jest.fn(),
         warning: jest.fn(),
-        notice: jest.fn(),
+        notice: {
+            skip: jest.fn(),
+        },
         info: jest.fn(),
         debug: jest.fn(),
         verbose: jest.fn(),
@@ -40,6 +42,8 @@ describe('Remove', () => {
             removeServiceAccount: jest.fn(),
             getS3Buckets: jest.fn(),
             getMessageQueues: jest.fn(),
+            getApiGateway: jest.fn(),
+            removeApiGateway: jest.fn(),
         };
 
         providerMock.getS3Buckets.mockReturnValue([]);
@@ -80,6 +84,7 @@ describe('Remove', () => {
         providerMock.getFunctions.mockReturnValue([{ name: 'yc-nodejs-dev-func1', id: 'id1' }]);
         providerMock.getTriggers.mockReturnValue([{ name: 'yc-nodejs-dev-func1-cron', id: 'id2' }]);
         providerMock.getServiceAccounts.mockReturnValue([{ name: 'triggerSA', id: 'id3' }]);
+        providerMock.getApiGateway.mockReturnValue({ name: 'apiGw', id: 'id4' });
         const remove = new YandexCloudRemove(serverlessMock, mockOptions);
 
         await remove.remove();
@@ -89,5 +94,7 @@ describe('Remove', () => {
         expect(providerMock.removeTrigger.mock.calls[0][0]).toBe('id2');
         expect(providerMock.removeServiceAccount).toBeCalledTimes(1);
         expect(providerMock.removeServiceAccount.mock.calls[0][0]).toBe('id3');
+        expect(providerMock.removeApiGateway).toBeCalledTimes(1);
+        expect(providerMock.removeApiGateway.mock.calls[0][0]).toBe('id4');
     });
 });

@@ -70,6 +70,13 @@ describe('OpenAPI Spec', () => {
                     roles: ['editor'],
                 },
             },
+            service: {
+                provider: {
+                    httpApi: {
+                        payload: '1.0',
+                    },
+                },
+            },
         };
 
         deployMock = {
@@ -84,6 +91,7 @@ describe('OpenAPI Spec', () => {
             objectStorageRegistry: {},
             containerRegistryRegistry: {},
             getServiceAccountId: jest.fn(),
+            getApiGateway: jest.fn(),
         };
         deployMock.getServiceAccountId.mockReturnValue('acc_id');
     });
@@ -126,12 +134,6 @@ describe('OpenAPI Spec', () => {
                             method: 'post',
                         },
                     },
-                    {
-                        http: {
-                            path: '/star',
-                            method: '*',
-                        },
-                    },
                 ],
                 tags: {},
             },
@@ -143,41 +145,44 @@ describe('OpenAPI Spec', () => {
                 '/any': {
                     'x-yc-apigateway-any-method': {
                         'x-yc-apigateway-integration': {
+                            'context': undefined,
                             'function_id': 'func_id',
                             'payload_format_version': '1.0',
                             'service_account_id': 'acc_id',
                             'tag': '$latest',
                             'type': 'cloud_functions',
+                        },
+                        'responses': {
+                            '200': {
+                                'description': 'ok',
+                            },
                         },
                     },
                 },
                 '/post': {
                     post: {
                         'x-yc-apigateway-integration': {
+                            'context': undefined,
                             'function_id': 'func_id',
                             'payload_format_version': '1.0',
                             'service_account_id': 'acc_id',
                             'tag': '$latest',
                             'type': 'cloud_functions',
                         },
-                    },
-                },
-                '/star': {
-                    'x-yc-apigateway-any-method': {
-                        'x-yc-apigateway-integration': {
-                            'function_id': 'func_id',
-                            'payload_format_version': '1.0',
-                            'service_account_id': 'acc_id',
-                            'tag': '$latest',
-                            'type': 'cloud_functions',
+                        'responses': {
+                            '200': {
+                                'description': 'ok',
+                            },
                         },
                     },
                 },
             },
             'info': { 'title': 'serverless', 'version': '1.0.0' },
         };
-        expect(spec.toJson()).toEqual(expected);
-    });
+        expect(spec.toJson(),
+        ).toEqual(expected);
+    })
+    ;
 
     it('should merge when declared multiple methods for same path', () => {
         const func = new YCFunction(serverlessMock, deployMock, { id: 'func_id', name: 'func_name' });
@@ -214,20 +219,32 @@ describe('OpenAPI Spec', () => {
                 '/foo': {
                     get: {
                         'x-yc-apigateway-integration': {
+                            'context': undefined,
                             'function_id': 'func_id',
                             'payload_format_version': '1.0',
                             'service_account_id': 'acc_id',
                             'tag': '$latest',
                             'type': 'cloud_functions',
                         },
+                        'responses': {
+                            '200': {
+                                'description': 'ok',
+                            },
+                        },
                     },
                     post: {
                         'x-yc-apigateway-integration': {
+                            'context': undefined,
                             'function_id': 'func_id',
                             'payload_format_version': '1.0',
                             'service_account_id': 'acc_id',
                             'tag': '$latest',
                             'type': 'cloud_functions',
+                        },
+                        'responses': {
+                            '200': {
+                                'description': 'ok',
+                            },
                         },
                     },
                 },
@@ -289,20 +306,32 @@ describe('OpenAPI Spec', () => {
                 '/foo': {
                     get: {
                         'x-yc-apigateway-integration': {
+                            'context': undefined,
                             'function_id': 'func_id1',
                             'payload_format_version': '1.0',
                             'service_account_id': 'acc_id',
                             'tag': '$latest',
                             'type': 'cloud_functions',
                         },
+                        'responses': {
+                            '200': {
+                                'description': 'ok',
+                            },
+                        },
                     },
                     post: {
                         'x-yc-apigateway-integration': {
+                            'context': undefined,
                             'function_id': 'func_id2',
                             'payload_format_version': '1.0',
                             'service_account_id': 'acc_id',
                             'tag': '$latest',
                             'type': 'cloud_functions',
+                        },
+                        'responses': {
+                            '200': {
+                                'description': 'ok',
+                            },
                         },
                     },
                 },

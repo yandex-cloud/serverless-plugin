@@ -254,9 +254,9 @@ export class YandexCloudDeploy implements ServerlessPlugin {
         await Promise.all(Object.values(this.functionRegistry).map(func => func.sync()));
         await Promise.all(Object.values(this.triggerRegistry).map(trigger => trigger.sync()));
 
-        const providerConfig: ProviderConfig = this.serverless.service.provider as any;
+        const providerConfig: ProviderConfig | undefined = this.serverless.service.provider as any;
 
-        if (providerConfig.httpApi) {
+        if (providerConfig?.httpApi) {
             const apiGatewayInfo = await this.provider.getApiGateway();
             const apiGateway = new ApiGateway(this.serverless, apiGatewayInfo);
             apiGateway.setNewState({functions: Object.values(this.functionRegistry)})

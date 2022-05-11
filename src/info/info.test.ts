@@ -30,6 +30,7 @@ describe('Info', () => {
             getServiceAccounts: jest.fn(),
             getS3Buckets: jest.fn(),
             getMessageQueues: jest.fn(),
+            getApiGateway: jest.fn(),
         };
 
         serverlessMock = {
@@ -57,6 +58,7 @@ describe('Info', () => {
         };
 
         providerMock.getFunctions.mockReturnValue([{ name: 'yc-nodejs-dev-func1', id: 'id1' }]);
+        providerMock.getApiGateway.mockReturnValue({ name: 'apigw'});
         const info = new YandexCloudInfo(serverlessMock, mockOptions);
 
         await info.info();

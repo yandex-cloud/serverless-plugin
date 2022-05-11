@@ -93,7 +93,7 @@ export class YandexCloudInfo implements ServerlessPlugin {
     async apiGatewayInfo() {
         const existingApiGateway = await this.provider.getApiGateway();
 
-        if (existingApiGateway.id) {
+        if (existingApiGateway?.id) {
             log.notice(`API Gateway "${existingApiGateway.name}" deployed with url "https://${existingApiGateway.id}.apigw.yandexcloud.net/"`);
         } else {
             log.warning(`API Gateway "${existingApiGateway.name}" not deployed`);
