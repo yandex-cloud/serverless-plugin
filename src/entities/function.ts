@@ -1,4 +1,6 @@
 import Serverless from 'serverless';
+import bind from 'bind-decorator';
+import { OpenAPIV3 } from 'openapi-types';
 import { log, progress } from '../utils/logging';
 import { YandexCloudProvider } from '../provider/provider';
 import { YandexCloudDeploy } from '../deploy/deploy';
@@ -14,9 +16,7 @@ import {
     ServerlessFunc,
     YcPathItemObject,
 } from '../types/common';
-import bind from 'bind-decorator';
 import { ProviderConfig } from '../provider/types';
-import { OpenAPIV3 } from 'openapi-types';
 import ParameterObject = OpenAPIV3.ParameterObject;
 import OperationObject = OpenAPIV3.OperationObject;
 
@@ -41,7 +41,9 @@ interface FunctionIntegration {
     };
 }
 
-function mapParamGroupToPlacement(group: keyof RequestParameters) {
+const notUndefined = <T>(x: T | undefined): x is T => x !== undefined;
+
+const mapParamGroupToPlacement = (group: keyof RequestParameters): string => {
     switch (group) {
         case 'querystrings':
             return 'query';
@@ -49,8 +51,10 @@ function mapParamGroupToPlacement(group: keyof RequestParameters) {
             return 'header';
         case 'paths':
             return 'path';
+        default:
+            throw new Error('unexpected value');
     }
-}
+};
 
 export class YCFunction {
     public id?: string;
@@ -114,14 +118,13 @@ export class YCFunction {
             case HttpMethodAliases.TRACE:
                 return HttpMethods.TRACE;
             case HttpMethodAliases.ANY:
-                return HttpMethods.X_YC_API_GATEWAY_ANY_METHOD;
+                return HttpMethods.ANY;
             default:
-                throw Error('Unknown method');
+                throw new Error('Unknown method');
         }
     }
 
     makeParameter(placement: keyof RequestParameters, name: string, required: boolean): ParameterObject {
-
         return {
             in: mapParamGroupToPlacement(placement),
             name,
@@ -135,7 +138,7 @@ export class YCFunction {
     @bind
     toPathItemObject<T>(event: Event): [string, YcPathItemObject<T>] | undefined {
         if (!event.http || typeof event.http === 'string' || this.id === undefined) {
-            return;
+            return undefined;
         }
         const providerConfig: ProviderConfig | undefined = this.serverless.service?.provider as any;
 
@@ -152,17 +155,18 @@ export class YCFunction {
                 context: http.context,
             },
             responses: {
-                '200': {
+                200: {
                     description: 'ok',
                 },
             },
         };
         const { parameters } = http.request ?? {};
+
         if (parameters) {
-            const constructParams = (key: keyof RequestParameters) => {
-                return Object.entries(parameters[key] ?? {}).map(([name, required]) => this.makeParameter(key, name, required));
-            };
-            operation.parameters = (['paths', 'querystrings', 'headers'] as const).flatMap(constructParams);
+            const constructParams = (key: keyof RequestParameters) => Object.entries(parameters[key] ?? {})
+                .map(([name, required]) => this.makeParameter(key, name, required));
+
+            operation.parameters = (['paths', 'querystrings', 'headers'] as const).flatMap((x) => constructParams(x));
         }
 
         return [http.path,
@@ -175,13 +179,9 @@ export class YCFunction {
     toPathTuples<T>(): [string, YcPathItemObject<T>][] {
         const events = this.newState?.params.events ?? [];
 
-        function notUndefined<T>(x: T | undefined): x is T {
-            return x !== undefined;
-        }
-
         return events
-            .map(this.toPathItemObject)
-            .filter(x => notUndefined(x)) as [string, YcPathItemObject<T>][];
+            .map((x) => this.toPathItemObject(x))
+            .filter((x) => notUndefined(x)) as [string, YcPathItemObject<T>][];
     }
 
     async sync() {
@@ -189,15 +189,16 @@ export class YCFunction {
 
         if (!this.newState) {
             log.info(`Unknown function "${this.initialState?.name}" found`);
+
             return;
         }
 
         if (!YCFunction.validateEnvironment(this.newState.params.environment, provider)) {
-            throw Error('Invalid environment');
+            throw new Error('Invalid environment');
         }
 
         if (!this.serverless.service.provider.runtime) {
-            throw Error(`Provider's runtime is not defined`);
+            throw new Error('Provider\'s runtime is not defined');
         }
 
         const progressReporter = progress.create({
@@ -212,7 +213,6 @@ export class YCFunction {
                 id: this.initialState.id,
                 serviceAccount: this.deploy.getServiceAccountId(this.newState.params.account),
             };
-
 
             await provider.updateFunction(requestParams, progressReporter);
             progressReporter.remove();
@@ -229,6 +229,7 @@ export class YCFunction {
             serviceAccount: this.deploy.getServiceAccountId(this.newState.params.account),
         };
         const response = await provider.createFunction(requestParams, progressReporter);
+
         progressReporter.remove();
 
         this.id = response.id;

@@ -16,6 +16,13 @@ import AWS from 'aws-sdk';
 import axios from 'axios';
 import * as lodash from 'lodash';
 import bind from 'bind-decorator';
+import { Operation } from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/operation/operation';
+import { Any } from '@yandex-cloud/nodejs-sdk/dist/generated/google/protobuf/any';
+import { Status } from '@yandex-cloud/nodejs-sdk/dist/generated/google/rpc/status';
+import {
+    GetOpenapiSpecResponse,
+} from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/serverless/apigateway/v1/apigateway_service';
+import yaml from 'yaml';
 import {
     CreateApiGatewayRequest,
     CreateContainerRegistryRequest,
@@ -43,14 +50,7 @@ import {
 import { fileToBase64 } from './helpers';
 import { getYcConfig } from '../utils/yc-config';
 import { getEnv } from '../utils/get-env';
-import { Operation } from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/operation/operation';
-import { Any } from '@yandex-cloud/nodejs-sdk/dist/generated/google/protobuf/any';
-import { Status } from '@yandex-cloud/nodejs-sdk/dist/generated/google/rpc/status';
 import { log, ProgressReporter } from '../utils/logging';
-import {
-    GetOpenapiSpecResponse,
-} from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/serverless/apigateway/v1/apigateway_service';
-import yaml from 'yaml';
 
 const PROVIDER_NAME = 'yandex-cloud';
 
@@ -68,8 +68,8 @@ const {
 
 const AwsProvider = ServerlessAwsProvider as typeof ServerlessAwsProviderType;
 
-type SuccessfulOperation = Operation & {response: Any}
-type FailedOperation = Operation & {response: undefined; error: Status}
+type SuccessfulOperation = Operation & { response: Any };
+type FailedOperation = Operation & { response: undefined; error: Status };
 
 export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin {
     hooks: ServerlessPlugin.Hooks;
@@ -161,7 +161,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
 
     @bind
     async createCronTrigger(request: CreateCronTriggerRequest) {
-        let operation = await this.triggers.create(CloudApiTriggersService.CreateTriggerRequest.fromPartial({
+        const operation = await this.triggers.create(CloudApiTriggersService.CreateTriggerRequest.fromPartial({
             folderId: this.folderId,
             name: request.name,
             rule: {
@@ -185,7 +185,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
 
     @bind
     async createS3Trigger(request: CreateS3TriggerRequest) {
-        let operation = await this.triggers.create(CloudApiTriggersService.CreateTriggerRequest.fromPartial({
+        const operation = await this.triggers.create(CloudApiTriggersService.CreateTriggerRequest.fromPartial({
             folderId: this.folderId,
             name: request.name,
             rule: {
@@ -204,7 +204,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
 
     @bind
     async createYMQTrigger(request: CreateYmqTriggerRequest) {
-        let operation = await this.triggers.create(CloudApiTriggersService.CreateTriggerRequest.fromPartial({
+        const operation = await this.triggers.create(CloudApiTriggersService.CreateTriggerRequest.fromPartial({
             folderId: this.folderId,
             name: request.name,
             rule: {
@@ -237,7 +237,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
 
     @bind
     async createCRTrigger(request: CreateCrTriggerRequest) {
-        let operation = await this.triggers.create(CloudApiTriggersService.CreateTriggerRequest.fromPartial({
+        const operation = await this.triggers.create(CloudApiTriggersService.CreateTriggerRequest.fromPartial({
             folderId: this.folderId,
             name: request.name,
             rule: {
@@ -256,7 +256,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     }
 
     async removeTrigger(id: string) {
-        let operation = await this.triggers.delete(CloudApiTriggersService.DeleteTriggerRequest.fromPartial({
+        const operation = await this.triggers.delete(CloudApiTriggersService.DeleteTriggerRequest.fromPartial({
             triggerId: id,
         }));
 
@@ -266,7 +266,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     async getTriggers(): Promise<TriggerInfo[]> {
         const result = [];
 
-        let nextPageToken = undefined;
+        let nextPageToken;
 
         type ListTriggersResponse = cloudApi.serverless.triggers_trigger_service.ListTriggersResponse;
 
@@ -297,7 +297,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
         const access = await this.getAccessBindings();
 
         const result = [];
-        let nextPageToken = undefined;
+        let nextPageToken;
 
         type ListServiceAccountsResponse = cloudApi.iam.service_account_service.ListServiceAccountsResponse;
 
@@ -328,7 +328,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     async getAccessBindings() {
         const result = [];
 
-        let nextPageToken = undefined;
+        let nextPageToken;
 
         type ListAccessBindingsResponse = cloudApi.access.access.ListAccessBindingsResponse;
 
@@ -355,9 +355,9 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
         return result;
     }
 
-    async updateAccessBindings(saId: string, roles: string[]) {
+    async updateAccessBindings(saId: string, roles: string[]): Promise<Operation | undefined> {
         if (!roles || roles.length === 0) {
-            return;
+            return undefined;
         }
 
         const accessBindingDeltas = [];
@@ -375,7 +375,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
             });
         }
 
-        let operation = await this.folders.updateAccessBindings(CloudApiAccess.UpdateAccessBindingsRequest.fromPartial({
+        const operation = await this.folders.updateAccessBindings(CloudApiAccess.UpdateAccessBindingsRequest.fromPartial({
             resourceId: this.folderId,
             accessBindingDeltas,
         }));
@@ -384,7 +384,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     }
 
     async createServiceAccount(request: CreateServiceAccountRequest) {
-        let operation = await this.serviceAccounts.create(CloudApiServiceAccountService.CreateServiceAccountRequest.fromPartial({
+        const operation = await this.serviceAccounts.create(CloudApiServiceAccountService.CreateServiceAccountRequest.fromPartial({
             folderId: this.folderId,
             name: request.name,
         }));
@@ -394,7 +394,6 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
         await this.updateAccessBindings(sa.id, request.roles);
 
         return sa;
-
     }
 
     async removeServiceAccount(id: string) {
@@ -404,8 +403,8 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     }
 
     async createApiGateway(request: CreateApiGatewayRequest) {
-        log.debug(yaml.stringify(JSON.parse(request.openapiSpec)))
-        let operation = await this.apiGateways.create(CloudApiApiGatewayService.CreateApiGatewayRequest.fromPartial({
+        log.debug(yaml.stringify(JSON.parse(request.openapiSpec)));
+        const operation = await this.apiGateways.create(CloudApiApiGatewayService.CreateApiGatewayRequest.fromPartial({
             name: request.name,
             folderId: this.folderId,
             openapiSpec: request.openapiSpec,
@@ -424,7 +423,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     }
 
     async updateApiGateway(request: UpdateApiGatewayRequest) {
-        let operation = await this.apiGateways.update(CloudApiApiGatewayService.UpdateApiGatewayRequest.fromPartial({
+        const operation = await this.apiGateways.update(CloudApiApiGatewayService.UpdateApiGatewayRequest.fromPartial({
             apiGatewayId: request.id,
             openapiSpec: request.openapiSpec,
             updateMask: {
@@ -444,7 +443,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     }
 
     async removeApiGateway(id: string) {
-        let operation = await this.apiGateways.delete(CloudApiApiGatewayService.DeleteApiGatewayRequest.fromPartial({
+        const operation = await this.apiGateways.delete(CloudApiApiGatewayService.DeleteApiGatewayRequest.fromPartial({
             apiGatewayId: id,
         }));
 
@@ -461,13 +460,14 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
             }),
         );
 
-        if (listResponse.apiGateways.length != 0) {
+        if (listResponse.apiGateways.length > 0) {
             const apiGateway = listResponse.apiGateways[0];
             const specResponse: GetOpenapiSpecResponse = await this.apiGateways.getOpenapiSpec(
                 CloudApiApiGatewayService.GetOpenapiSpecRequest.fromPartial({
                     apiGatewayId: apiGateway.id,
                 }),
             );
+
             return {
                 name: apiGateway.name,
                 id: apiGateway.id,
@@ -475,7 +475,6 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
                 openapiSpec: specResponse.openapiSpec,
             };
         }
-
 
         return {
             name,
@@ -502,7 +501,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     async getFunctions(): Promise<FunctionInfo[]> {
         const result: FunctionInfo[] = [];
 
-        let nextPageToken = undefined;
+        let nextPageToken;
 
         type ListFunctionsResponse = cloudApi.serverless.functions_function_service.ListFunctionsResponse;
 
@@ -542,10 +541,11 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
             content: Buffer.from(fileToBase64(request.code), 'base64'),
             environment: request.environment,
         });
-        progress?.update(`Creating new version of function '${request.name}'`);
-        let operation = await this.functions.createVersion(createVersionRequest);
-        return this.check(operation);
 
+        progress?.update(`Creating new version of function '${request.name}'`);
+        const operation = await this.functions.createVersion(createVersionRequest);
+
+        return this.check(operation);
     }
 
     // noinspection JSUnusedLocalSymbols
@@ -555,7 +555,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
 
     async createFunction(request: CreateFunctionRequest, progress?: ProgressReporter) {
         progress?.update(`Creating function '${request.name}'`);
-        let operation = await this.functions.create(CloudApiFunctionsService.CreateFunctionRequest.fromPartial({
+        const operation = await this.functions.create(CloudApiFunctionsService.CreateFunctionRequest.fromPartial({
             name: request.name,
             folderId: this.folderId,
         }));
@@ -569,7 +569,6 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
         await this.updateFunction(request, progress);
 
         return request;
-
     }
 
     async getMessageQueueId(url: string) {
@@ -664,7 +663,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     async getContainerRegistries() {
         const result = [];
 
-        let nextPageToken: string | undefined = undefined;
+        let nextPageToken: string | undefined;
 
         do {
             const request = CloudApiRegistryService.ListRegistriesRequest.fromJSON({
@@ -689,7 +688,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     }
 
     async createContainerRegistry(request: CreateContainerRegistryRequest) {
-        let operation = await this.containerRegistryService.create(CloudApiRegistryService.CreateRegistryRequest.fromPartial({
+        const operation = await this.containerRegistryService.create(CloudApiRegistryService.CreateRegistryRequest.fromPartial({
             folderId: this.folderId,
             name: request.name,
         }));
@@ -697,29 +696,32 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
         const successfulOperation = await this.check(operation);
 
         const data = decodeMessage<cloudApi.containerregistry.registry.Registry>(successfulOperation.response);
+
         return {
             id: data.id,
             name: request.name,
         };
-
     }
 
     async removeContainerRegistry(id: string) {
-        let operation = await this.containerRegistryService.delete(CloudApiRegistryService.DeleteRegistryRequest.fromPartial({
+        const operation = await this.containerRegistryService.delete(CloudApiRegistryService.DeleteRegistryRequest.fromPartial({
             registryId: id,
         }));
+
         return this.check(operation);
     }
 
     private async check(operation: Operation): Promise<SuccessfulOperation> {
         try {
-            operation = (await waitForOperation(operation, this.session));
-            return operation as SuccessfulOperation;
-        } catch (err: any) {
-            const errorOperation = err as FailedOperation;
-            errorOperation.error.details.forEach(x => {
+            const awaitedOperation = await waitForOperation(operation, this.session);
+
+            return awaitedOperation as SuccessfulOperation;
+        } catch (error: any) {
+            const errorOperation = error as FailedOperation;
+
+            for (const x of errorOperation.error.details) {
                 log.debug(JSON.stringify(x));
-            });
+            }
             throw new Error(errorOperation.error.message);
         }
     }

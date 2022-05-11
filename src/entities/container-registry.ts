@@ -26,6 +26,7 @@ export class ContainerRegistry {
 
     async sync() {
         const provider = this.serverless.getProvider('yandex-cloud') as YandexCloudProvider;
+
         if (!this.newState) {
             return;
         }
@@ -38,6 +39,5 @@ export class ContainerRegistry {
 
         this.id = response?.id;
         log.success(`Container Registry created "${this.newState.name}"`);
-
     }
 }

@@ -1,5 +1,7 @@
 import Serverless from 'serverless';
 import { YandexCloudInfo } from './info';
+import { log } from '../utils/logging';
+
 jest.mock('../utils/logging', () => ({
     log: {
         error: jest.fn(),
@@ -12,7 +14,6 @@ jest.mock('../utils/logging', () => ({
     },
     writeText: jest.fn(),
 }));
-import {log} from '../utils/logging';
 
 describe('Info', () => {
     let providerMock: any;
@@ -58,7 +59,7 @@ describe('Info', () => {
         };
 
         providerMock.getFunctions.mockReturnValue([{ name: 'yc-nodejs-dev-func1', id: 'id1' }]);
-        providerMock.getApiGateway.mockReturnValue({ name: 'apigw'});
+        providerMock.getApiGateway.mockReturnValue({ name: 'apigw' });
         const info = new YandexCloudInfo(serverlessMock, mockOptions);
 
         await info.info();

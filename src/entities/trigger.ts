@@ -112,6 +112,7 @@ export class Trigger {
         if (!this.newState) {
             if (!this.initialState?.id) {
                 log.info('Trigger id is not defined');
+
                 return;
             }
 
@@ -135,7 +136,7 @@ export class Trigger {
         const triggerName = `${this.newState.function.name}-${this.newState.type}`;
 
         if (!this.newState.function.name) {
-            throw Error('Function name is not defined');
+            throw new Error('Function name is not defined');
         }
 
         const response = await this.creators()[this.newState.type]({

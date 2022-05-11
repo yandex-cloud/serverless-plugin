@@ -1,5 +1,6 @@
 import Serverless from 'serverless';
 import { YandexCloudInvoke } from './invoke';
+
 jest.mock('../utils/logging', () => ({
     log: {
         error: jest.fn(),

@@ -158,7 +158,6 @@ export class YandexCloudRemove implements ServerlessPlugin {
                 this.removeServiceAccount(name, existingAccounts);
             }
         }
-        this.removeApiGateway(existingApiGateway)
-
+        this.removeApiGateway(existingApiGateway);
     }
 }

@@ -32,7 +32,6 @@ describe('Remove', () => {
     };
 
     beforeEach(() => {
-
         providerMock = {
             getFunctions: jest.fn(),
             removeFunction: jest.fn(),

@@ -10,11 +10,11 @@ interface YcConfigBase {
     folderId: string;
 }
 
-interface YcConfigOauth extends YcConfigBase{
+interface YcConfigOauth extends YcConfigBase {
     token: string;
 }
 
-interface YcConfigIam extends YcConfigBase{
+interface YcConfigIam extends YcConfigBase {
     iamToken: string;
 }
 

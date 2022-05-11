@@ -1,8 +1,5 @@
-const {
-    progress,
-    log,
-    writeText,
-}: {progress: Progress, log: Log, writeText: (text: string | string[]) => void} = require('@serverless/utils/log');
+// @ts-ignore
+import * as util from '@serverless/utils/log';
 
 export interface ProgressReporter {
     update: (message: string) => void;
@@ -29,6 +26,10 @@ export interface Log {
     verbose: (text: string) => void;
     success: (text: string) => void;
 }
+
+const progress = util.progress as Progress;
+const log = util.log as Log;
+const writeText = util.writeText as (text: string | string[]) => void;
 
 export {
     progress,

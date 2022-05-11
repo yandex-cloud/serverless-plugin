@@ -3,7 +3,13 @@ import ServerlessPlugin from 'serverless/classes/Plugin';
 
 import { Trigger } from '../entities/trigger';
 import { YandexCloudProvider } from '../provider/provider';
-import { FunctionInfo, MessageQueueInfo, S3BucketInfo, ServiceAccountInfo, TriggerInfo } from '../types/common';
+import {
+    FunctionInfo,
+    MessageQueueInfo,
+    S3BucketInfo,
+    ServiceAccountInfo,
+    TriggerInfo,
+} from '../types/common';
 import { log } from '../utils/logging';
 
 export class YandexCloudInfo implements ServerlessPlugin {
@@ -94,7 +100,9 @@ export class YandexCloudInfo implements ServerlessPlugin {
         const existingApiGateway = await this.provider.getApiGateway();
 
         if (existingApiGateway?.id) {
-            log.notice(`API Gateway "${existingApiGateway.name}" deployed with url "https://${existingApiGateway.id}.apigw.yandexcloud.net/"`);
+            log.notice(
+                `API Gateway "${existingApiGateway.name}" deployed with url "https://${existingApiGateway.id}.apigw.yandexcloud.net/"`,
+            );
         } else {
             log.warning(`API Gateway "${existingApiGateway.name}" not deployed`);
         }

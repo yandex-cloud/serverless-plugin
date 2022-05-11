@@ -27,7 +27,7 @@ export class ApiGateway {
         this.id = initial?.id;
     }
 
-    setNewState(input: {functions: YCFunction[]}) {
+    setNewState(input: { functions: YCFunction[] }) {
         this.newState = {
             openapiSpec: this.constructOpenApiSpec(input.functions),
         };
@@ -35,6 +35,7 @@ export class ApiGateway {
 
     async sync() {
         const provider = this.serverless.getProvider('yandex-cloud') as YandexCloudProvider;
+
         if (!this.newState) {
             return;
         }
@@ -58,6 +59,7 @@ export class ApiGateway {
                 log.error(`${error}\nFailed to update API Gateway
             ${requestParams.name}`);
             }
+
             return;
         }
 
@@ -66,8 +68,10 @@ export class ApiGateway {
                 ...this.initialState,
                 ...this.newState,
             };
+
             progressReporter.update('Creating API Gateway');
             const response = await provider.createApiGateway(requestParams);
+
             progressReporter.remove();
             this.id = response.id;
             log.success(`ApiGateway created\n${requestParams.name}`);
@@ -78,7 +82,7 @@ export class ApiGateway {
 
     private constructOpenApiSpec(functions: YCFunction[]): string {
         const spec = new OpenApiSpec(this.initialState.name, functions);
-        return spec.toString();
 
+        return spec.toString();
     }
 }

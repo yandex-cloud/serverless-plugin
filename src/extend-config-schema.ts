@@ -4,7 +4,6 @@ import type { JSONSchema7, JSONSchema7Definition } from 'json-schema';
 import { YandexCloudProvider } from './provider/provider';
 import { EventType, TriggerType } from './types/common';
 
-
 const requestParametersSchema: JSONSchema7 = {
     type: 'object',
     additionalProperties: {
@@ -33,7 +32,6 @@ const requestSchema: JSONSchema7 = {
     },
     additionalProperties: false,
 };
-
 
 const responseSchema: JSONSchema7 = {
     type: 'object',
@@ -74,7 +72,6 @@ const responseSchema: JSONSchema7 = {
     additionalProperties: false,
 };
 
-
 const schemaHttpTrigger: JSONSchema7 = {
     type: 'object',
     properties: {
@@ -104,7 +101,6 @@ const schemaHttpTrigger: JSONSchema7 = {
     },
     required: ['path', 'method'],
 };
-
 
 const schemaCronTrigger: JSONSchema7 = {
     type: 'object',
@@ -328,17 +324,17 @@ export const extendConfigSchema = (sls: Serverless) => {
                 type: 'object',
                 oneOf: [
                     {
-                        '$ref': '#/definitions/apiKeyFunctionAuthorizer',
+                        $ref: '#/definitions/apiKeyFunctionAuthorizer',
                     },
                     {
-                        '$ref': '#/definitions/httpFunctionAuthorizer',
+                        $ref: '#/definitions/httpFunctionAuthorizer',
                     },
                 ],
             },
             authorizers: {
                 type: 'object',
                 patternProperties: {
-                    '^[a-z][a-z0-9_.]*$': { '$ref': '#/definitions/functionAuthorizer' },
+                    '^[a-z][a-z0-9_.]*$': { $ref: '#/definitions/functionAuthorizer' },
                 },
             },
             apiGatewayConfig: {
@@ -350,7 +346,7 @@ export const extendConfigSchema = (sls: Serverless) => {
                             '1.0',
                         ],
                     },
-                    authorizers: { '$ref': '#/definitions/authorizers' },
+                    authorizers: { $ref: '#/definitions/authorizers' },
                 },
             },
         },

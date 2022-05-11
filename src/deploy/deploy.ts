@@ -82,9 +82,10 @@ export class YandexCloudDeploy implements ServerlessPlugin {
 
     async deployService(describedFunctions: Record<string, ServerlessFunc>) {
         const progressReporter = progress.create({
-            name: `deploy`,
+            name: 'deploy',
         });
-        progressReporter.update(`Fetching functions`);
+
+        progressReporter.update('Fetching functions');
         for (const func of await this.provider.getFunctions()) {
             this.functionRegistry[func.name] = new YCFunction(this.serverless, this, func);
         }
@@ -103,7 +104,7 @@ export class YandexCloudDeploy implements ServerlessPlugin {
             }
         }
 
-        progressReporter.update(`Fetching triggers`);
+        progressReporter.update('Fetching triggers');
         for (const trigger of await this.provider.getTriggers()) {
             const found = Object.values(describedFunctions).find((f) => {
                 for (const type of Trigger.supportedTriggers()) {
@@ -146,7 +147,7 @@ export class YandexCloudDeploy implements ServerlessPlugin {
             }
         }
 
-        progressReporter.update(`Fetching service accounts`);
+        progressReporter.update('Fetching service accounts');
         for (const sa of await this.provider.getServiceAccounts()) {
             this.serviceAccountRegistry[sa.name] = new ServiceAccount(this.serverless, sa);
         }
@@ -163,7 +164,7 @@ export class YandexCloudDeploy implements ServerlessPlugin {
             }
         }
 
-        progressReporter.update(`Fetching container registries`);
+        progressReporter.update('Fetching container registries');
         for (const r of await this.provider.getContainerRegistries()) {
             this.containerRegistryRegistry[r.name] = new ContainerRegistry(this.serverless, r);
         }
@@ -193,7 +194,7 @@ export class YandexCloudDeploy implements ServerlessPlugin {
                 .filter(([name, params]) => params.type === 'yc::ObjectStorageBucket');
 
             if (ymqResources.length > 0) {
-                progressReporter.update(`Fetching queues`);
+                progressReporter.update('Fetching queues');
 
                 for (const queue of await this.provider.getMessageQueues()) {
                     this.messageQueueRegistry[queue.name] = new MessageQueue(this.serverless, queue);
@@ -216,7 +217,7 @@ export class YandexCloudDeploy implements ServerlessPlugin {
             }
 
             if (s3Resouces.length > 0) {
-                progressReporter.update(`Fetching buckets`);
+                progressReporter.update('Fetching buckets');
                 for (const bucket of await this.provider.getS3Buckets()) {
                     this.objectStorageRegistry[bucket.name] = new ObjectStorage(this.serverless, bucket);
                 }
@@ -241,7 +242,7 @@ export class YandexCloudDeploy implements ServerlessPlugin {
       Maybe you should set AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY environment variables`);
         }
 
-        progressReporter.update(`Updating entities`);
+        progressReporter.update('Updating entities');
         for (const resource of [
             ...Object.values(this.serviceAccountRegistry),
             ...Object.values(this.messageQueueRegistry),
@@ -251,16 +252,17 @@ export class YandexCloudDeploy implements ServerlessPlugin {
             await resource.sync();
         }
 
-        await Promise.all(Object.values(this.functionRegistry).map(func => func.sync()));
-        await Promise.all(Object.values(this.triggerRegistry).map(trigger => trigger.sync()));
+        await Promise.all(Object.values(this.functionRegistry).map((func) => func.sync()));
+        await Promise.all(Object.values(this.triggerRegistry).map((trigger) => trigger.sync()));
 
         const providerConfig: ProviderConfig | undefined = this.serverless.service.provider as any;
 
         if (providerConfig?.httpApi) {
             const apiGatewayInfo = await this.provider.getApiGateway();
             const apiGateway = new ApiGateway(this.serverless, apiGatewayInfo);
-            apiGateway.setNewState({functions: Object.values(this.functionRegistry)})
-            await apiGateway.sync()
+
+            apiGateway.setNewState({ functions: Object.values(this.functionRegistry) });
+            await apiGateway.sync();
         }
         progressReporter.remove();
     }

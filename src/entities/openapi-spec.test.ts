@@ -21,7 +21,6 @@ jest.mock('../utils/logging', () => ({
 }));
 
 describe('OpenAPI Spec', () => {
-
     let providerMock: any;
     let serverlessMock: any;
     let deployMock: any;
@@ -103,15 +102,17 @@ describe('OpenAPI Spec', () => {
     it('should return of JSON', () => {
         const spec = new OpenApiSpec('serverless', []);
         const expected = {
-            'openapi': '3.0.0',
-            'paths': {},
-            'info': { 'title': 'serverless', 'version': '1.0.0' },
+            openapi: '3.0.0',
+            paths: {},
+            info: { title: 'serverless', version: '1.0.0' },
         };
+
         expect(spec.toJson()).toEqual(expected);
     });
 
     it('should add pathes for functions with `http` event', () => {
         const func = new YCFunction(serverlessMock, deployMock, { id: 'func_id', name: 'func_name' });
+
         func.setNewState({
             name: 'func_name',
             params: {
@@ -140,21 +141,21 @@ describe('OpenAPI Spec', () => {
         });
         const spec = new OpenApiSpec('serverless', [func]);
         const expected = {
-            'openapi': '3.0.0',
-            'paths': {
+            openapi: '3.0.0',
+            paths: {
                 '/any': {
                     'x-yc-apigateway-any-method': {
                         'x-yc-apigateway-integration': {
-                            'context': undefined,
-                            'function_id': 'func_id',
-                            'payload_format_version': '1.0',
-                            'service_account_id': 'acc_id',
-                            'tag': '$latest',
-                            'type': 'cloud_functions',
+                            context: undefined,
+                            function_id: 'func_id',
+                            payload_format_version: '1.0',
+                            service_account_id: 'acc_id',
+                            tag: '$latest',
+                            type: 'cloud_functions',
                         },
-                        'responses': {
-                            '200': {
-                                'description': 'ok',
+                        responses: {
+                            200: {
+                                description: 'ok',
                             },
                         },
                     },
@@ -162,30 +163,29 @@ describe('OpenAPI Spec', () => {
                 '/post': {
                     post: {
                         'x-yc-apigateway-integration': {
-                            'context': undefined,
-                            'function_id': 'func_id',
-                            'payload_format_version': '1.0',
-                            'service_account_id': 'acc_id',
-                            'tag': '$latest',
-                            'type': 'cloud_functions',
+                            context: undefined,
+                            function_id: 'func_id',
+                            payload_format_version: '1.0',
+                            service_account_id: 'acc_id',
+                            tag: '$latest',
+                            type: 'cloud_functions',
                         },
-                        'responses': {
-                            '200': {
-                                'description': 'ok',
+                        responses: {
+                            200: {
+                                description: 'ok',
                             },
                         },
                     },
                 },
             },
-            'info': { 'title': 'serverless', 'version': '1.0.0' },
+            info: { title: 'serverless', version: '1.0.0' },
         };
-        expect(spec.toJson(),
-        ).toEqual(expected);
-    })
-    ;
 
+        expect(spec.toJson()).toEqual(expected);
+    });
     it('should merge when declared multiple methods for same path', () => {
         const func = new YCFunction(serverlessMock, deployMock, { id: 'func_id', name: 'func_name' });
+
         func.setNewState({
             name: 'func_name',
             params: {
@@ -214,50 +214,51 @@ describe('OpenAPI Spec', () => {
         });
         const spec = new OpenApiSpec('serverless', [func]);
         const expected = {
-            'openapi': '3.0.0',
-            'paths': {
+            openapi: '3.0.0',
+            paths: {
                 '/foo': {
                     get: {
                         'x-yc-apigateway-integration': {
-                            'context': undefined,
-                            'function_id': 'func_id',
-                            'payload_format_version': '1.0',
-                            'service_account_id': 'acc_id',
-                            'tag': '$latest',
-                            'type': 'cloud_functions',
+                            context: undefined,
+                            function_id: 'func_id',
+                            payload_format_version: '1.0',
+                            service_account_id: 'acc_id',
+                            tag: '$latest',
+                            type: 'cloud_functions',
                         },
-                        'responses': {
-                            '200': {
-                                'description': 'ok',
+                        responses: {
+                            200: {
+                                description: 'ok',
                             },
                         },
                     },
                     post: {
                         'x-yc-apigateway-integration': {
-                            'context': undefined,
-                            'function_id': 'func_id',
-                            'payload_format_version': '1.0',
-                            'service_account_id': 'acc_id',
-                            'tag': '$latest',
-                            'type': 'cloud_functions',
+                            context: undefined,
+                            function_id: 'func_id',
+                            payload_format_version: '1.0',
+                            service_account_id: 'acc_id',
+                            tag: '$latest',
+                            type: 'cloud_functions',
                         },
-                        'responses': {
-                            '200': {
-                                'description': 'ok',
+                        responses: {
+                            200: {
+                                description: 'ok',
                             },
                         },
                     },
                 },
             },
-            'info': { 'title': 'serverless', 'version': '1.0.0' },
+            info: { title: 'serverless', version: '1.0.0' },
         };
+
         expect(spec.toJson()).toEqual(expected);
     });
-
 
     it('should merge when same path declared in different functions', () => {
         const func1 = new YCFunction(serverlessMock, deployMock, { id: 'func_id1', name: 'func_name' });
         const func2 = new YCFunction(serverlessMock, deployMock, { id: 'func_id2', name: 'func_name' });
+
         func1.setNewState({
             name: 'func_name',
             params: {
@@ -301,49 +302,51 @@ describe('OpenAPI Spec', () => {
         });
         const spec = new OpenApiSpec('serverless', [func2, func1]);
         const expected = {
-            'openapi': '3.0.0',
-            'paths': {
+            openapi: '3.0.0',
+            paths: {
                 '/foo': {
                     get: {
                         'x-yc-apigateway-integration': {
-                            'context': undefined,
-                            'function_id': 'func_id1',
-                            'payload_format_version': '1.0',
-                            'service_account_id': 'acc_id',
-                            'tag': '$latest',
-                            'type': 'cloud_functions',
+                            context: undefined,
+                            function_id: 'func_id1',
+                            payload_format_version: '1.0',
+                            service_account_id: 'acc_id',
+                            tag: '$latest',
+                            type: 'cloud_functions',
                         },
-                        'responses': {
-                            '200': {
-                                'description': 'ok',
+                        responses: {
+                            200: {
+                                description: 'ok',
                             },
                         },
                     },
                     post: {
                         'x-yc-apigateway-integration': {
-                            'context': undefined,
-                            'function_id': 'func_id2',
-                            'payload_format_version': '1.0',
-                            'service_account_id': 'acc_id',
-                            'tag': '$latest',
-                            'type': 'cloud_functions',
+                            context: undefined,
+                            function_id: 'func_id2',
+                            payload_format_version: '1.0',
+                            service_account_id: 'acc_id',
+                            tag: '$latest',
+                            type: 'cloud_functions',
                         },
-                        'responses': {
-                            '200': {
-                                'description': 'ok',
+                        responses: {
+                            200: {
+                                description: 'ok',
                             },
                         },
                     },
                 },
             },
-            'info': { 'title': 'serverless', 'version': '1.0.0' },
+            info: { title: 'serverless', version: '1.0.0' },
         };
+
         expect(spec.toJson()).toEqual(expected);
     });
 
     it('should throw an error if genric method collide with specific', () => {
         const func1 = new YCFunction(serverlessMock, deployMock, { id: 'func_id1', name: 'func_name' });
         const func2 = new YCFunction(serverlessMock, deployMock, { id: 'func_id2', name: 'func_name' });
+
         func1.setNewState({
             name: 'func_name',
             params: {
