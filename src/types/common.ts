@@ -1,5 +1,6 @@
-import { Package } from 'serverless';
 import { OpenAPIV3 } from 'openapi-types';
+import { Event } from './events';
+import { Package } from './serverless';
 
 export const X_YC_API_GATEWAY_AUTHORIZER = 'x-yc-apigateway-authorizer';
 export const X_YC_API_GATEWAY_INTEGRATION = 'x-yc-apigateway-integration';
@@ -395,8 +396,6 @@ export interface ApiGatewayEvent {
         schemas?: { [schema: string]: string | object }
     };
 }
-
-export type Event = ApiGatewayEvent;
 
 export interface ServerlessFunc {
     account: string;

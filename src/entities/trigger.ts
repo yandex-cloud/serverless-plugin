@@ -1,9 +1,9 @@
-import Serverless from 'serverless';
-
 import { YandexCloudProvider } from '../provider/provider';
 import { YandexCloudDeploy } from '../deploy/deploy';
 import { TriggerInfo, TriggerType } from '../types/common';
 import { log } from '../utils/logging';
+import Serverless from '../types/serverless';
+import { Event } from '../types/events';
 
 interface RetryOptions {
     attempts: number;
@@ -96,7 +96,7 @@ export class Trigger {
         return [TriggerType.CRON, TriggerType.S3, TriggerType.YMQ, TriggerType.CR];
     }
 
-    static normalizeEvent(event: Serverless.Event) {
+    static normalizeEvent(event: Event) {
         // @ts-ignore
         const foundTriggerType = Trigger.supportedTriggers().find((type) => event[type]);
 

@@ -1,4 +1,3 @@
-import Serverless from 'serverless';
 import ServerlessPlugin from 'serverless/classes/Plugin';
 
 import { Trigger } from '../entities/trigger';
@@ -12,6 +11,7 @@ import {
     TriggerInfo,
 } from '../types/common';
 import { log } from '../utils/logging';
+import Serverless from '../types/serverless';
 
 export class YandexCloudRemove implements ServerlessPlugin {
     hooks: ServerlessPlugin.Hooks;

@@ -1,11 +1,12 @@
-import Serverless from 'serverless';
 import bind from 'bind-decorator';
 import { OpenAPIV3 } from 'openapi-types';
-import { log, progress } from '../utils/logging';
+import {
+    log,
+    progress,
+} from '../utils/logging';
 import { YandexCloudProvider } from '../provider/provider';
 import { YandexCloudDeploy } from '../deploy/deploy';
 import {
-    Event,
     HttpMethod,
     HttpMethodAlias,
     HttpMethodAliases,
@@ -16,9 +17,22 @@ import {
     ServerlessFunc,
     YcPathItemObject,
 } from '../types/common';
-import { ProviderConfig } from '../provider/types';
+import {
+    CodeOrPackage,
+    ProviderConfig,
+    UpdateFunctionRequest,
+} from '../provider/types';
+import fs from 'node:fs';
+import { humanFileSize } from '../utils/formatting';
+import { Event } from '../types/events';
+import Serverless from '../types/serverless';
+import { AWSError } from 'aws-sdk/lib/error';
+import path from 'path';
 import ParameterObject = OpenAPIV3.ParameterObject;
 import OperationObject = OpenAPIV3.OperationObject;
+
+export const MAX_PACKAGE_SIZE = 128 * 1024 * 1024; // 128MB
+export const MAX_PACKAGE_SIZE_FOR_DIRECT_UPLOAD = 3.5 * 1024 * 1024; // 3.5MB
 
 interface FunctionState {
     id: string;
@@ -184,8 +198,49 @@ export class YCFunction {
             .filter((x) => notUndefined(x)) as [string, YcPathItemObject<T>][];
     }
 
+    async prepareArtifact(): Promise<CodeOrPackage> {
+        const provider = this.serverless.getProvider('yandex-cloud');
+        const { artifact } = this.serverless.service.package;
+        const artifactStat = fs.statSync(artifact);
+        if (artifactStat.size >= MAX_PACKAGE_SIZE) {
+            throw new Error(`Artifact size ${humanFileSize(artifactStat.size)} exceeds Maximum Package Size of 128MB`);
+        } else if (artifactStat.size >= MAX_PACKAGE_SIZE_FOR_DIRECT_UPLOAD) {
+            log.warning(`Artifact size ${humanFileSize(artifactStat.size)} exceeds Maximum Package Size for direct upload of 3.5MB.`);
+            const providerConfig = this.serverless.service.provider;
+            const bucketName = providerConfig.deploymentBucket ?? provider.getServerlessDeploymentBucketName();
+            const prefix = providerConfig.deploymentPrefix ?? 'serverless';
+            try {
+                await provider.checkS3Bucket(bucketName);
+            } catch (err) {
+                const awsErr = err as AWSError;
+                if (awsErr.statusCode === 404) {
+                    log.info(`No bucket ${bucketName}.`)
+                    await provider.createS3Bucket({ name: bucketName });
+                }
+            }
+            const objectName = path.join(prefix, path.basename(artifact));
+            await provider.putS3Object({
+                Bucket: bucketName,
+                Key: objectName,
+                Body: fs.readFileSync(artifact),
+            });
+
+            return {
+                package: {
+                    bucketName,
+                    objectName,
+                },
+            };
+        } else {
+            return {
+                code: artifact,
+            };
+        }
+
+    }
+
     async sync() {
-        const provider = this.serverless.getProvider('yandex-cloud') as YandexCloudProvider;
+        const provider = this.serverless.getProvider('yandex-cloud');
 
         if (!this.newState) {
             log.info(`Unknown function "${this.initialState?.name}" found`);
@@ -205,11 +260,13 @@ export class YCFunction {
             name: `function-${this.newState.name}`,
         });
 
+        const artifact = await this.prepareArtifact();
+
         if (this.initialState) {
-            const requestParams = {
+            const requestParams: UpdateFunctionRequest = {
                 ...this.newState.params,
                 runtime: this.serverless.service.provider.runtime,
-                code: this.serverless.service.package.artifact,
+                artifact,
                 id: this.initialState.id,
                 serviceAccount: this.deploy.getServiceAccountId(this.newState.params.account),
             };
@@ -225,7 +282,7 @@ export class YCFunction {
         const requestParams = {
             ...this.newState.params,
             runtime: this.serverless.service.provider.runtime,
-            code: this.serverless.service.package.artifact,
+            ...artifact,
             serviceAccount: this.deploy.getServiceAccountId(this.newState.params.account),
         };
         const response = await provider.createFunction(requestParams, progressReporter);

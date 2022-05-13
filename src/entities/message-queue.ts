@@ -1,8 +1,7 @@
-import Serverless from 'serverless';
-
 import { YandexCloudProvider } from '../provider/provider';
 import { MessageQueueInfo } from '../types/common';
 import { log } from '../utils/logging';
+import Serverless from '../types/serverless';
 
 interface MessageQueueState {
     id?: string;

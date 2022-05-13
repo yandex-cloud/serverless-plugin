@@ -1,4 +1,3 @@
-import Serverless, { FunctionDefinition } from 'serverless';
 import ServerlessPlugin from 'serverless/classes/Plugin';
 
 import { Trigger } from '../entities/trigger';
@@ -11,6 +10,7 @@ import {
     TriggerInfo,
 } from '../types/common';
 import { log } from '../utils/logging';
+import Serverless, { FunctionDefinition } from '../types/serverless';
 
 export class YandexCloudInfo implements ServerlessPlugin {
     hooks: ServerlessPlugin.Hooks;
@@ -23,7 +23,7 @@ export class YandexCloudInfo implements ServerlessPlugin {
     constructor(serverless: Serverless, options: Serverless.Options) {
         this.serverless = serverless;
         this.options = options;
-        this.provider = this.serverless.getProvider('yandex-cloud') as YandexCloudProvider;
+        this.provider = this.serverless.getProvider('yandex-cloud');
 
         this.hooks = {
             'info:info': async () => {

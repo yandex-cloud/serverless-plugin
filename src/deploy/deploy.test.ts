@@ -1,6 +1,5 @@
-import Serverless from 'serverless';
-
 import { YandexCloudDeploy } from './deploy';
+import Serverless from '../types/serverless';
 
 jest.mock('../utils/logging', () => ({
     log: {

@@ -1,9 +1,9 @@
-import Serverless from 'serverless';
 import { YCFunction } from './function';
 import { UpdateApiGatewayRequest } from '../provider/types';
 import { YandexCloudProvider } from '../provider/provider';
 import { log, progress } from '../utils/logging';
 import { OpenApiSpec } from './openapi-spec';
+import Serverless from '../types/serverless';
 
 interface ApiGatewayState {
     id?: string;

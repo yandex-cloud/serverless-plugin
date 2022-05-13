@@ -1,7 +1,6 @@
-import Serverless from 'serverless';
-
 import { YandexCloudProvider } from '../provider/provider';
 import { log } from '../utils/logging';
+import Serverless from '../types/serverless';
 
 interface ContainerRegistryState {
     id?: string;

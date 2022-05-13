@@ -1,5 +1,4 @@
 import ServerlessPlugin from 'serverless/classes/Plugin';
-import Serverless from 'serverless';
 
 import { YCFunction } from '../entities/function';
 import { Trigger } from '../entities/trigger';
@@ -10,8 +9,11 @@ import { ContainerRegistry } from '../entities/container-registry';
 import { YandexCloudProvider } from '../provider/provider';
 import { ServerlessFunc } from '../types/common';
 import { ApiGateway } from '../entities/api-gateway';
-import { log, progress } from '../utils/logging';
-import { ProviderConfig } from '../provider/types';
+import {
+    log,
+    progress,
+} from '../utils/logging';
+import Serverless from '../types/serverless';
 
 const functionOption = 'function';
 
@@ -255,7 +257,7 @@ export class YandexCloudDeploy implements ServerlessPlugin {
         await Promise.all(Object.values(this.functionRegistry).map((func) => func.sync()));
         await Promise.all(Object.values(this.triggerRegistry).map((trigger) => trigger.sync()));
 
-        const providerConfig: ProviderConfig | undefined = this.serverless.service.provider as any;
+        const providerConfig = this.serverless.service.provider;
 
         if (providerConfig?.httpApi) {
             const apiGatewayInfo = await this.provider.getApiGateway();

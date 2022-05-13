@@ -1,8 +1,8 @@
-import Serverless from 'serverless';
 import ServerlessPlugin from 'serverless/classes/Plugin';
 
 import { YandexCloudProvider } from '../provider/provider';
 import { log, writeText } from '../utils/logging';
+import Serverless from '../types/serverless';
 
 export class YandexCloudInvoke implements ServerlessPlugin {
     hooks: ServerlessPlugin.Hooks;

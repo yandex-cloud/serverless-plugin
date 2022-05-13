@@ -1,5 +1,4 @@
 /* eslint-disable import/no-import-module-exports */
-import Serverless from 'serverless';
 
 import ServerlessPlugin from 'serverless/classes/Plugin';
 import { YandexCloudProvider } from './provider/provider';
@@ -9,6 +8,7 @@ import { YandexCloudInvoke } from './invoke/invoke';
 import { YandexCloudInfo } from './info/info';
 import { YandexCloudLogs } from './logs/logs';
 import { extendConfigSchema } from './extend-config-schema';
+import Serverless from './types/serverless';
 
 class YandexCloudServerlessPlugin implements ServerlessPlugin {
     hooks: ServerlessPlugin.Hooks = {};

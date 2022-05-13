@@ -1,8 +1,8 @@
-import Serverless from 'serverless';
 import type { JSONSchema7, JSONSchema7Definition } from 'json-schema';
 
 import { YandexCloudProvider } from './provider/provider';
 import { EventType, TriggerType } from './types/common';
+import Serverless from './types/serverless';
 
 const requestParametersSchema: JSONSchema7 = {
     type: 'object',
@@ -122,7 +122,7 @@ const schemaCronTrigger: JSONSchema7 = {
     required: ['expression', 'account'],
 };
 
-const schemaCronS3: JSONSchema7 = {
+const schemaS3Trigger: JSONSchema7 = {
     type: 'object',
     properties: {
         bucket: { type: 'string' },
@@ -150,7 +150,7 @@ const schemaCronS3: JSONSchema7 = {
     required: ['bucket', 'account', 'events'],
 };
 
-const schemaCronYMQ: JSONSchema7 = {
+const schemaYMQTrigger: JSONSchema7 = {
     type: 'object',
     properties: {
         queue: { type: 'string' },
@@ -168,7 +168,7 @@ const schemaCronYMQ: JSONSchema7 = {
     required: ['queue', 'account', 'queueAccount'],
 };
 
-const schemaCronCR: JSONSchema7 = {
+const schemaCRTrigger: JSONSchema7 = {
     type: 'object',
     properties: {
         registry: { type: 'string' },
@@ -398,18 +398,18 @@ export const extendConfigSchema = (sls: Serverless) => {
     sls.configSchemaHandler.defineFunctionEvent(
         YandexCloudProvider.getProviderName(),
         TriggerType.S3,
-        schemaCronS3 as Record<string, unknown>,
+        schemaS3Trigger as Record<string, unknown>,
     );
 
     sls.configSchemaHandler.defineFunctionEvent(
         YandexCloudProvider.getProviderName(),
         TriggerType.YMQ,
-        schemaCronYMQ as Record<string, unknown>,
+        schemaYMQTrigger as Record<string, unknown>,
     );
 
     sls.configSchemaHandler.defineFunctionEvent(
         YandexCloudProvider.getProviderName(),
         TriggerType.CR,
-        schemaCronCR as Record<string, unknown>,
+        schemaCRTrigger as Record<string, unknown>,
     );
 };

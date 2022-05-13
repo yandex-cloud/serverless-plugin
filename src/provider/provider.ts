@@ -6,22 +6,20 @@ import {
     waitForOperation,
     WrappedServiceClientType,
 } from '@yandex-cloud/nodejs-sdk';
-import Serverless from 'serverless';
 import ServerlessPlugin from 'serverless/classes/Plugin';
 
 // @ts-ignore TODO: fix @types/serverless and remove this ignore
 import ServerlessAwsProvider from 'serverless/lib/plugins/aws/provider';
 import type ServerlessAwsProviderType from 'serverless/aws';
-import AWS from 'aws-sdk';
+import AWS, { S3 } from 'aws-sdk';
 import axios from 'axios';
 import * as lodash from 'lodash';
+import _ from 'lodash';
 import bind from 'bind-decorator';
 import { Operation } from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/operation/operation';
 import { Any } from '@yandex-cloud/nodejs-sdk/dist/generated/google/protobuf/any';
 import { Status } from '@yandex-cloud/nodejs-sdk/dist/generated/google/rpc/status';
-import {
-    GetOpenapiSpecResponse,
-} from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/serverless/apigateway/v1/apigateway_service';
+import { GetOpenapiSpecResponse } from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/serverless/apigateway/v1/apigateway_service';
 import yaml from 'yaml';
 import {
     CreateApiGatewayRequest,
@@ -50,7 +48,13 @@ import {
 import { fileToBase64 } from './helpers';
 import { getYcConfig } from '../utils/yc-config';
 import { getEnv } from '../utils/get-env';
-import { log, ProgressReporter } from '../utils/logging';
+import {
+    log,
+    ProgressReporter,
+} from '../utils/logging';
+import { S3Event } from '../types/events';
+import Serverless from '../types/serverless';
+import { Package } from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/serverless/functions/v1/function';
 
 const PROVIDER_NAME = 'yandex-cloud';
 
@@ -71,7 +75,7 @@ const AwsProvider = ServerlessAwsProvider as typeof ServerlessAwsProviderType;
 type SuccessfulOperation = Operation & { response: Any };
 type FailedOperation = Operation & { response: undefined; error: Status };
 
-export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin {
+export class YandexCloudProvider implements ServerlessPlugin {
     hooks: ServerlessPlugin.Hooks;
     commands?: ServerlessPlugin.Commands | undefined;
     variableResolvers?: ServerlessPlugin.VariableResolvers | undefined;
@@ -90,8 +94,6 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     private s3: AWS.S3;
 
     constructor(serverless: Serverless, options: Serverless.Options) {
-        super(serverless, options);
-
         this.serverless = serverless;
         this.options = options;
         this.serverless.setProvider(PROVIDER_NAME, this);
@@ -138,6 +140,38 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
         return PROVIDER_NAME;
     }
 
+    getValues(source: object, objectPaths: string[][]) {
+        return objectPaths.map((objectPath) => ({
+            path: objectPath,
+            value: _.get(source, objectPath.join('.')),
+        }));
+    }
+
+    firstValue(values: { value: unknown }[]) {
+        return values.reduce((result, current) => {
+            return result.value ? result : current;
+        }, {} as { value: unknown });
+    }
+
+    getStageSourceValue() {
+        const values = this.getValues(this, [
+            ['options', 'stage'],
+            ['serverless', 'config', 'stage'],
+            ['serverless', 'service', 'provider', 'stage'],
+        ]);
+        return this.firstValue(values);
+    }
+
+    getStage() {
+        const defaultStage = 'dev';
+        const stageSourceValue = this.getStageSourceValue();
+        return stageSourceValue.value || defaultStage;
+    }
+
+    getServerlessDeploymentBucketName(): string {
+        return `serverless-${this.folderId}`;
+    }
+
     makeInvokeFunctionWithRetryParams(request: InvokeFunctionRequest) {
         return {
             functionId: request.functionId,
@@ -177,9 +211,9 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
 
     convertS3EvenType(type: string) {
         return {
-            'create.object': CloudApiTriggers.Trigger_ObjectStorageEventType.OBJECT_STORAGE_EVENT_TYPE_CREATE_OBJECT,
-            'delete.object': CloudApiTriggers.Trigger_ObjectStorageEventType.OBJECT_STORAGE_EVENT_TYPE_DELETE_OBJECT,
-            'update.object': CloudApiTriggers.Trigger_ObjectStorageEventType.OBJECT_STORAGE_EVENT_TYPE_UPDATE_OBJECT,
+            [S3Event.CREATE]: CloudApiTriggers.Trigger_ObjectStorageEventType.OBJECT_STORAGE_EVENT_TYPE_CREATE_OBJECT,
+            [S3Event.DELETE]: CloudApiTriggers.Trigger_ObjectStorageEventType.OBJECT_STORAGE_EVENT_TYPE_DELETE_OBJECT,
+            [S3Event.UPDATE]: CloudApiTriggers.Trigger_ObjectStorageEventType.OBJECT_STORAGE_EVENT_TYPE_UPDATE_OBJECT,
         }[type];
     }
 
@@ -529,7 +563,7 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
     }
 
     async updateFunction(request: UpdateFunctionRequest, progress?: ProgressReporter) {
-        const createVersionRequest = CloudApiFunctionsService.CreateFunctionVersionRequest.fromPartial({
+        const createVersionRequest: any = {
             functionId: request.id,
             runtime: request.runtime,
             entrypoint: request.handler,
@@ -538,12 +572,18 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
                 seconds: request.timeout,
             },
             serviceAccountId: request.serviceAccount,
-            content: Buffer.from(fileToBase64(request.code), 'base64'),
             environment: request.environment,
-        });
+        };
+        if ('code' in request.artifact) {
+            createVersionRequest.content = Buffer.from(fileToBase64(request.artifact.code), 'base64');
+        } else {
+            createVersionRequest.package = request.artifact.package as Package;
+        }
 
         progress?.update(`Creating new version of function '${request.name}'`);
-        const operation = await this.functions.createVersion(createVersionRequest);
+        const operation = await this.functions.createVersion(
+            CloudApiFunctionsService.CreateFunctionVersionRequest.fromPartial(createVersionRequest),
+        );
 
         return this.check(operation);
     }
@@ -652,12 +692,20 @@ export class YandexCloudProvider extends AwsProvider implements ServerlessPlugin
         return result;
     }
 
+    async checkS3Bucket(name: string) {
+        return this.s3.headBucket({ Bucket: name }).promise();
+    }
+
     async createS3Bucket(request: CreateS3BucketRequest) {
         return this.s3.createBucket({ Bucket: request.name }).promise();
     }
 
     async removeS3Bucket(name: string) {
         return this.s3.deleteBucket({ Bucket: name }).promise();
+    }
+
+    async putS3Object(request: S3.Types.PutObjectRequest) {
+        return this.s3.putObject(request).promise();
     }
 
     async getContainerRegistries() {
