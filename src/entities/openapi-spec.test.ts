@@ -56,7 +56,10 @@ describe('OpenAPI Spec', () => {
         providerMock.getMessageQueues.mockReturnValue([]);
         providerMock.getS3Buckets.mockReturnValue([]);
         providerMock.getContainerRegistries.mockReturnValue([]);
-        providerMock.getServiceAccounts.mockReturnValue([{ name: 'acc', id: 'acc_id' }]);
+        providerMock.getServiceAccounts.mockReturnValue([{
+            name: 'acc',
+            id: 'acc_id',
+        }]);
 
         serverlessMock = {
             getProvider: () => providerMock,
@@ -100,18 +103,24 @@ describe('OpenAPI Spec', () => {
     });
 
     it('should return of JSON', () => {
-        const spec = new OpenApiSpec('serverless', []);
+        const spec = new OpenApiSpec(serverlessMock, deployMock, 'serverless', []);
         const expected = {
             openapi: '3.0.0',
             paths: {},
-            info: { title: 'serverless', version: '1.0.0' },
+            info: {
+                title: 'serverless',
+                version: '1.0.0',
+            },
         };
 
         expect(spec.toJson()).toEqual(expected);
     });
 
     it('should add pathes for functions with `http` event', () => {
-        const func = new YCFunction(serverlessMock, deployMock, { id: 'func_id', name: 'func_name' });
+        const func = new YCFunction(serverlessMock, deployMock, {
+            id: 'func_id',
+            name: 'func_name',
+        });
 
         func.setNewState({
             name: 'func_name',
@@ -139,7 +148,7 @@ describe('OpenAPI Spec', () => {
                 tags: {},
             },
         });
-        const spec = new OpenApiSpec('serverless', [func]);
+        const spec = new OpenApiSpec(serverlessMock, deployMock, 'serverless', [func]);
         const expected = {
             openapi: '3.0.0',
             paths: {
@@ -178,13 +187,19 @@ describe('OpenAPI Spec', () => {
                     },
                 },
             },
-            info: { title: 'serverless', version: '1.0.0' },
+            info: {
+                title: 'serverless',
+                version: '1.0.0',
+            },
         };
 
         expect(spec.toJson()).toEqual(expected);
     });
     it('should merge when declared multiple methods for same path', () => {
-        const func = new YCFunction(serverlessMock, deployMock, { id: 'func_id', name: 'func_name' });
+        const func = new YCFunction(serverlessMock, deployMock, {
+            id: 'func_id',
+            name: 'func_name',
+        });
 
         func.setNewState({
             name: 'func_name',
@@ -212,7 +227,7 @@ describe('OpenAPI Spec', () => {
                 tags: {},
             },
         });
-        const spec = new OpenApiSpec('serverless', [func]);
+        const spec = new OpenApiSpec(serverlessMock, deployMock, 'serverless', [func]);
         const expected = {
             openapi: '3.0.0',
             paths: {
@@ -249,15 +264,24 @@ describe('OpenAPI Spec', () => {
                     },
                 },
             },
-            info: { title: 'serverless', version: '1.0.0' },
+            info: {
+                title: 'serverless',
+                version: '1.0.0',
+            },
         };
 
         expect(spec.toJson()).toEqual(expected);
     });
 
     it('should merge when same path declared in different functions', () => {
-        const func1 = new YCFunction(serverlessMock, deployMock, { id: 'func_id1', name: 'func_name' });
-        const func2 = new YCFunction(serverlessMock, deployMock, { id: 'func_id2', name: 'func_name' });
+        const func1 = new YCFunction(serverlessMock, deployMock, {
+            id: 'func_id1',
+            name: 'func_name',
+        });
+        const func2 = new YCFunction(serverlessMock, deployMock, {
+            id: 'func_id2',
+            name: 'func_name',
+        });
 
         func1.setNewState({
             name: 'func_name',
@@ -300,7 +324,7 @@ describe('OpenAPI Spec', () => {
                 tags: {},
             },
         });
-        const spec = new OpenApiSpec('serverless', [func2, func1]);
+        const spec = new OpenApiSpec(serverlessMock, deployMock, 'serverless', [func2, func1]);
         const expected = {
             openapi: '3.0.0',
             paths: {
@@ -337,15 +361,24 @@ describe('OpenAPI Spec', () => {
                     },
                 },
             },
-            info: { title: 'serverless', version: '1.0.0' },
+            info: {
+                title: 'serverless',
+                version: '1.0.0',
+            },
         };
 
         expect(spec.toJson()).toEqual(expected);
     });
 
     it('should throw an error if genric method collide with specific', () => {
-        const func1 = new YCFunction(serverlessMock, deployMock, { id: 'func_id1', name: 'func_name' });
-        const func2 = new YCFunction(serverlessMock, deployMock, { id: 'func_id2', name: 'func_name' });
+        const func1 = new YCFunction(serverlessMock, deployMock, {
+            id: 'func_id1',
+            name: 'func_name',
+        });
+        const func2 = new YCFunction(serverlessMock, deployMock, {
+            id: 'func_id2',
+            name: 'func_name',
+        });
 
         func1.setNewState({
             name: 'func_name',
@@ -389,6 +422,6 @@ describe('OpenAPI Spec', () => {
             },
         });
 
-        expect(() => new OpenApiSpec('serverless', [func2, func1])).toThrow();
+        expect(() => new OpenApiSpec(serverlessMock, deployMock, 'serverless', [func2, func1])).toThrow();
     });
 });

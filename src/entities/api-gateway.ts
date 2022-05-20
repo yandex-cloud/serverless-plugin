@@ -1,9 +1,13 @@
 import { YCFunction } from './function';
 import { UpdateApiGatewayRequest } from '../provider/types';
 import { YandexCloudProvider } from '../provider/provider';
-import { log, progress } from '../utils/logging';
+import {
+    log,
+    progress,
+} from '../utils/logging';
 import { OpenApiSpec } from './openapi-spec';
 import Serverless from '../types/serverless';
+import { YandexCloudDeploy } from '../deploy/deploy';
 
 interface ApiGatewayState {
     id?: string;
@@ -17,12 +21,10 @@ interface ApiGatewayNewState {
 
 export class ApiGateway {
     public id?: string;
-    private readonly serverless: Serverless;
     private readonly initialState: ApiGatewayState;
     private newState?: ApiGatewayNewState;
 
-    constructor(serverless: Serverless, initial: ApiGatewayState) {
-        this.serverless = serverless;
+    constructor(private serverless: Serverless, private deploy: YandexCloudDeploy, initial: ApiGatewayState) {
         this.initialState = initial;
         this.id = initial?.id;
     }
@@ -80,7 +82,7 @@ export class ApiGateway {
     }
 
     private constructOpenApiSpec(functions: YCFunction[]): string {
-        const spec = new OpenApiSpec(this.initialState.name, functions);
+        const spec = new OpenApiSpec(this.serverless, this.deploy, this.initialState.name, functions);
 
         return spec.toString();
     }

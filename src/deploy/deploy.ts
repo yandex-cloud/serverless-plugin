@@ -252,7 +252,7 @@ export class YandexCloudDeploy implements ServerlessPlugin {
             this.containerRegistryRegistry,
             this.functionRegistry,
             this.triggerRegistry,
-        ]
+        ];
         for (const registry of registries) {
             await Promise.all(Object.values(registry).map((resourse) => resourse.sync()));
         }
@@ -261,7 +261,7 @@ export class YandexCloudDeploy implements ServerlessPlugin {
 
         if (providerConfig?.httpApi) {
             const apiGatewayInfo = await this.provider.getApiGateway();
-            const apiGateway = new ApiGateway(this.serverless, apiGatewayInfo);
+            const apiGateway = new ApiGateway(this.serverless, this, apiGatewayInfo);
 
             apiGateway.setNewState({ functions: Object.values(this.functionRegistry) });
             await apiGateway.sync();

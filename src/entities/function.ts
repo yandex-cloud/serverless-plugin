@@ -1,4 +1,3 @@
-import bind from 'bind-decorator';
 import { OpenAPIV3 } from 'openapi-types';
 import {
     log,
@@ -7,29 +6,19 @@ import {
 import { YandexCloudProvider } from '../provider/provider';
 import { YandexCloudDeploy } from '../deploy/deploy';
 import {
-    HttpMethod,
-    HttpMethodAlias,
-    HttpMethodAliases,
-    HttpMethods,
     IntegrationType,
-    PayloadFormatVersion,
     RequestParameters,
     ServerlessFunc,
-    YcPathItemObject,
 } from '../types/common';
 import {
     CodeOrPackage,
-    ProviderConfig,
     UpdateFunctionRequest,
 } from '../provider/types';
 import fs from 'node:fs';
 import { humanFileSize } from '../utils/formatting';
-import { Event } from '../types/events';
 import Serverless from '../types/serverless';
 import { AWSError } from 'aws-sdk/lib/error';
 import path from 'path';
-import ParameterObject = OpenAPIV3.ParameterObject;
-import OperationObject = OpenAPIV3.OperationObject;
 
 export const MAX_PACKAGE_SIZE = 128 * 1024 * 1024; // 128MB
 export const MAX_PACKAGE_SIZE_FOR_DIRECT_UPLOAD = 3.5 * 1024 * 1024; // 3.5MB
@@ -44,31 +33,7 @@ interface FunctionNewState {
     name: string;
 }
 
-interface FunctionIntegration {
-    'x-yc-apigateway-integration': {
-        type: IntegrationType.cloud_functions;
-        function_id: string;
-        tag: string;
-        payload_format_version: string;
-        service_account_id?: string
-        context?: object
-    };
-}
 
-const notUndefined = <T>(x: T | undefined): x is T => x !== undefined;
-
-const mapParamGroupToPlacement = (group: keyof RequestParameters): string => {
-    switch (group) {
-        case 'querystrings':
-            return 'query';
-        case 'headers':
-            return 'header';
-        case 'paths':
-            return 'path';
-        default:
-            throw new Error('unexpected value');
-    }
-};
 
 export class YCFunction {
     public id?: string;
@@ -109,93 +74,12 @@ export class YCFunction {
         return result;
     }
 
+    getNewState(): FunctionNewState | undefined {
+        return this.newState;
+    }
+
     setNewState(newState: FunctionNewState) {
         this.newState = newState;
-    }
-
-    mapMethod(method: HttpMethodAlias): HttpMethod {
-        switch (method) {
-            case HttpMethodAliases.GET:
-                return HttpMethods.GET;
-            case HttpMethodAliases.PUT:
-                return HttpMethods.PUT;
-            case HttpMethodAliases.POST:
-                return HttpMethods.POST;
-            case HttpMethodAliases.DELETE:
-                return HttpMethods.DELETE;
-            case HttpMethodAliases.OPTIONS:
-                return HttpMethods.OPTIONS;
-            case HttpMethodAliases.HEAD:
-                return HttpMethods.HEAD;
-            case HttpMethodAliases.PATCH:
-                return HttpMethods.PATCH;
-            case HttpMethodAliases.TRACE:
-                return HttpMethods.TRACE;
-            case HttpMethodAliases.ANY:
-                return HttpMethods.ANY;
-            default:
-                throw new Error('Unknown method');
-        }
-    }
-
-    makeParameter(placement: keyof RequestParameters, name: string, required: boolean): ParameterObject {
-        return {
-            in: mapParamGroupToPlacement(placement),
-            name,
-            schema: {
-                type: 'string',
-            },
-            required,
-        };
-    }
-
-    @bind
-    toPathItemObject<T>(event: Event): [string, YcPathItemObject<T>] | undefined {
-        if (!event.http || typeof event.http === 'string' || this.id === undefined) {
-            return undefined;
-        }
-        const providerConfig: ProviderConfig | undefined = this.serverless.service?.provider as any;
-
-        const { http } = event;
-        const serviceAccountId = this.newState?.params.account ? this.deploy.getServiceAccountId(this.newState?.params.account) : undefined;
-        const payloadFormatVersion = http.eventFormat || (providerConfig?.httpApi.payload ?? PayloadFormatVersion.V0);
-        const operation: OperationObject<FunctionIntegration> = {
-            'x-yc-apigateway-integration': {
-                type: IntegrationType.cloud_functions,
-                function_id: this.id,
-                tag: '$latest',
-                payload_format_version: payloadFormatVersion,
-                service_account_id: serviceAccountId,
-                context: http.context,
-            },
-            responses: {
-                200: {
-                    description: 'ok',
-                },
-            },
-        };
-        const { parameters } = http.request ?? {};
-
-        if (parameters) {
-            const constructParams = (key: keyof RequestParameters) => Object.entries(parameters[key] ?? {})
-                .map(([name, required]) => this.makeParameter(key, name, required));
-
-            operation.parameters = (['paths', 'querystrings', 'headers'] as const).flatMap((x) => constructParams(x));
-        }
-
-        return [http.path,
-            {
-                [this.mapMethod(http.method)]: operation,
-            }];
-    }
-
-    @bind
-    toPathTuples<T>(): [string, YcPathItemObject<T>][] {
-        const events = this.newState?.params.events ?? [];
-
-        return events
-            .map((x) => this.toPathItemObject(x))
-            .filter((x) => notUndefined(x)) as [string, YcPathItemObject<T>][];
     }
 
     async prepareArtifact(): Promise<CodeOrPackage> {
@@ -214,7 +98,7 @@ export class YCFunction {
             } catch (err) {
                 const awsErr = err as AWSError;
                 if (awsErr.statusCode === 404) {
-                    log.info(`No bucket ${bucketName}.`)
+                    log.info(`No bucket ${bucketName}.`);
                     await provider.createS3Bucket({ name: bucketName });
                 }
             }
