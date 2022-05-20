@@ -9,10 +9,13 @@ export default {
     moduleFileExtensions: [
         'js',
         'ts',
+        'json',
     ],
     preset: 'ts-jest',
     rootDir: path.resolve('./src/'),
     transform: {
         '^.+\\.ts$': 'ts-jest',
     },
+    testEnvironment: 'node',
+
 };

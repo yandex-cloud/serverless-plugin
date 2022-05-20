@@ -1,5 +1,6 @@
 import { YandexCloudDeploy } from './deploy';
 import Serverless from '../types/serverless';
+import fs from 'fs';
 
 jest.mock('../utils/logging', () => ({
     log: {
@@ -68,6 +69,7 @@ describe('Deploy', () => {
                 log: console.log,
             },
         };
+        jest.spyOn(fs, 'statSync').mockReturnValue({ size: 10_000 } as fs.Stats);
     });
 
     afterEach(() => {
