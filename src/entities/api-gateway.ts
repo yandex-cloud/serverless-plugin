@@ -56,8 +56,7 @@ export class ApiGateway {
                 progressReporter.remove();
                 log.success(`ApiGateway updated\n${requestParams.name}`);
             } catch (error) {
-                log.error(`${error}\nFailed to update API Gateway
-            ${requestParams.name}`);
+                log.error(`${error}\nFailed to update API Gateway ${requestParams.name}`);
             }
 
             return;

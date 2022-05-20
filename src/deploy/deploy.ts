@@ -245,17 +245,17 @@ export class YandexCloudDeploy implements ServerlessPlugin {
         }
 
         progressReporter.update('Updating entities');
-        for (const resource of [
-            ...Object.values(this.serviceAccountRegistry),
-            ...Object.values(this.messageQueueRegistry),
-            ...Object.values(this.objectStorageRegistry),
-            ...Object.values(this.containerRegistryRegistry),
-        ]) {
-            await resource.sync();
+        const registries = [
+            this.serviceAccountRegistry,
+            this.messageQueueRegistry,
+            this.objectStorageRegistry,
+            this.containerRegistryRegistry,
+            this.functionRegistry,
+            this.triggerRegistry,
+        ]
+        for (const registry of registries) {
+            await Promise.all(Object.values(registry).map((resourse) => resourse.sync()));
         }
-
-        await Promise.all(Object.values(this.functionRegistry).map((func) => func.sync()));
-        await Promise.all(Object.values(this.triggerRegistry).map((trigger) => trigger.sync()));
 
         const providerConfig = this.serverless.service.provider;
 
