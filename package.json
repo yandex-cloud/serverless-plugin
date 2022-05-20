@@ -31,7 +31,6 @@
     "axios": "^0.24.0",
     "bind-decorator": "^1.0.11",
     "lodash": "^4.17.21",
-    "openapi-types": "^11.0.0",
     "yaml": "^1.8.3"
   },
   "devDependencies": {
@@ -50,6 +49,7 @@
     "eslint-plugin-unicorn": "^39.0.0",
     "husky": "^7.0.4",
     "jest": "^27.4.5",
+    "openapi-types": "^11.0.0",
     "semantic-release": "^19.0.3",
     "ts-jest": "^27.1.2",
     "ts-node": "^10.4.0",
