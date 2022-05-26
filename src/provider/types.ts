@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/indent */
 import { PayloadFormatVersion } from '../types/common';
 
 export interface InvokeFunctionRequest {
@@ -11,7 +12,7 @@ export interface InvokeFunctionRequest {
     dlqAccountId?: string;
 }
 
-export type CodeOrPackage = { code: string } | { package: { bucketName: string, objectName: string } }
+export type CodeOrPackage = { code: string } | { package: { bucketName: string, objectName: string } };
 
 export interface UpdateFunctionRequest {
     id: string;

@@ -1,6 +1,8 @@
-import { OpenAPIV3 } from 'openapi-types';
+import bind from 'bind-decorator';
 import _ from 'lodash';
-import { YCFunction } from './function';
+import { OpenAPIV3 } from 'openapi-types';
+import { YandexCloudDeploy } from '../deploy/deploy';
+import { ProviderConfig } from '../provider/types';
 import {
     HttpMethod,
     HttpMethodAlias,
@@ -13,13 +15,11 @@ import {
     YcPathItemObject,
     YcPathsObject,
 } from '../types/common';
-import bind from 'bind-decorator';
 import { Event } from '../types/events';
-import { ProviderConfig } from '../provider/types';
 import Serverless from '../types/serverless';
-import { YandexCloudDeploy } from '../deploy/deploy';
-import ParameterObject = OpenAPIV3.ParameterObject;
+import { YCFunction } from './function';
 import OperationObject = OpenAPIV3.OperationObject;
+import ParameterObject = OpenAPIV3.ParameterObject;
 
 const notUndefined = <T>(x: T | undefined): x is T => x !== undefined;
 

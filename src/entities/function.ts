@@ -1,24 +1,19 @@
-import { OpenAPIV3 } from 'openapi-types';
-import {
-    log,
-    progress,
-} from '../utils/logging';
-import { YandexCloudProvider } from '../provider/provider';
+import { AWSError } from 'aws-sdk/lib/error';
+import fs from 'node:fs';
+import path from 'path';
 import { YandexCloudDeploy } from '../deploy/deploy';
-import {
-    IntegrationType,
-    RequestParameters,
-    ServerlessFunc,
-} from '../types/common';
+import { YandexCloudProvider } from '../provider/provider';
 import {
     CodeOrPackage,
     UpdateFunctionRequest,
 } from '../provider/types';
-import fs from 'node:fs';
-import { humanFileSize } from '../utils/formatting';
+import { ServerlessFunc } from '../types/common';
 import Serverless from '../types/serverless';
-import { AWSError } from 'aws-sdk/lib/error';
-import path from 'path';
+import { humanFileSize } from '../utils/formatting';
+import {
+    log,
+    progress,
+} from '../utils/logging';
 
 export const MAX_PACKAGE_SIZE = 128 * 1024 * 1024; // 128MB
 export const MAX_PACKAGE_SIZE_FOR_DIRECT_UPLOAD = 3.5 * 1024 * 1024; // 3.5MB
@@ -32,8 +27,6 @@ interface FunctionNewState {
     params: ServerlessFunc;
     name: string;
 }
-
-
 
 export class YCFunction {
     public id?: string;
@@ -86,6 +79,7 @@ export class YCFunction {
         const provider = this.serverless.getProvider('yandex-cloud');
         const { artifact } = this.serverless.service.package;
         const artifactStat = fs.statSync(artifact);
+
         if (artifactStat.size >= MAX_PACKAGE_SIZE) {
             throw new Error(`Artifact size ${humanFileSize(artifactStat.size)} exceeds Maximum Package Size of 128MB`);
         } else if (artifactStat.size >= MAX_PACKAGE_SIZE_FOR_DIRECT_UPLOAD) {
@@ -93,16 +87,19 @@ export class YCFunction {
             const providerConfig = this.serverless.service.provider;
             const bucketName = providerConfig.deploymentBucket ?? provider.getServerlessDeploymentBucketName();
             const prefix = providerConfig.deploymentPrefix ?? 'serverless';
+
             try {
                 await provider.checkS3Bucket(bucketName);
-            } catch (err) {
-                const awsErr = err as AWSError;
+            } catch (error) {
+                const awsErr = error as AWSError;
+
                 if (awsErr.statusCode === 404) {
                     log.info(`No bucket ${bucketName}.`);
                     await provider.createS3Bucket({ name: bucketName });
                 }
             }
             const objectName = path.join(prefix, path.basename(artifact));
+
             await provider.putS3Object({
                 Bucket: bucketName,
                 Key: objectName,
@@ -120,7 +117,6 @@ export class YCFunction {
                 code: artifact,
             };
         }
-
     }
 
     async sync() {

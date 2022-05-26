@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-namespace, @typescript-eslint/no-misused-new */
 import Serverless from './serverless';
 import { Event } from './events';
 import { ProviderConfig } from '../provider/types';
@@ -17,13 +18,12 @@ export default interface Service {
     plugins: string[];
     pluginsData: { [key: string]: any };
     functions: { [key: string]: Serverless.FunctionDefinitionHandler | Serverless.FunctionDefinitionImage };
-    resources:
-        | {
+    resources: | {
         Resources: {
             [key: string]: any;
         };
     }
-        | { [key: string]: any };
+    | { [key: string]: any };
     package: { [key: string]: any };
     configValidationMode: string;
     disabledDeprecations?: any[] | undefined;
@@ -35,11 +35,11 @@ export default interface Service {
     outputs?: any;
     initialServerlessConfig: any;
 
-    new(serverless: Serverless, data: {}): Service;
+    new(serverless: Serverless, data: Record<string, unknown>): Service;
 
-    load(rawOptions: {}): Promise<any>;
+    load(rawOptions: Record<string, unknown>): Promise<any>;
 
-    setFunctionNames(rawOptions: {}): void;
+    setFunctionNames(rawOptions: Record<string, unknown>): void;
 
     getServiceName(): string;
 
@@ -57,5 +57,5 @@ export default interface Service {
 
     validate(): Service;
 
-    update(data: {}): {};
+    update(data: Record<string, unknown>): Record<string, unknown>;
 }

@@ -11,7 +11,6 @@ interface HttpAuthorizer {
     type?: string | undefined;
 }
 
-
 interface HttpRequestParametersValidation {
     querystrings?: { [key: string]: boolean } | undefined;
     headers?: { [key: string]: boolean } | undefined;

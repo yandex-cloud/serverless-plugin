@@ -6,21 +6,40 @@ import {
     waitForOperation,
     WrappedServiceClientType,
 } from '@yandex-cloud/nodejs-sdk';
+import { Any } from '@yandex-cloud/nodejs-sdk/dist/generated/google/protobuf/any';
+import { Status } from '@yandex-cloud/nodejs-sdk/dist/generated/google/rpc/status';
+import { Operation } from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/operation/operation';
+import { GetOpenapiSpecResponse } from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/serverless/apigateway/v1/apigateway_service';
+import { Package } from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/serverless/functions/v1/function';
+import AWS, { S3 } from 'aws-sdk';
+import axios from 'axios';
+import bind from 'bind-decorator';
+import * as lodash from 'lodash';
+import _ from 'lodash';
+import type ServerlessAwsProviderType from 'serverless/aws';
 import ServerlessPlugin from 'serverless/classes/Plugin';
 
 // @ts-ignore TODO: fix @types/serverless and remove this ignore
 import ServerlessAwsProvider from 'serverless/lib/plugins/aws/provider';
-import type ServerlessAwsProviderType from 'serverless/aws';
-import AWS, { S3 } from 'aws-sdk';
-import axios from 'axios';
-import * as lodash from 'lodash';
-import _ from 'lodash';
-import bind from 'bind-decorator';
-import { Operation } from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/operation/operation';
-import { Any } from '@yandex-cloud/nodejs-sdk/dist/generated/google/protobuf/any';
-import { Status } from '@yandex-cloud/nodejs-sdk/dist/generated/google/rpc/status';
-import { GetOpenapiSpecResponse } from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/serverless/apigateway/v1/apigateway_service';
 import yaml from 'yaml';
+
+import {
+    ApiGatewayInfo,
+    FunctionInfo,
+    MessageQueueInfo,
+    S3BucketInfo,
+    ServiceAccountInfo,
+    TriggerInfo,
+} from '../types/common';
+import { S3Event } from '../types/events';
+import Serverless from '../types/serverless';
+import { getEnv } from '../utils/get-env';
+import {
+    log,
+    ProgressReporter,
+} from '../utils/logging';
+import { getYcConfig } from '../utils/yc-config';
+import { fileToBase64 } from './helpers';
 import {
     CreateApiGatewayRequest,
     CreateContainerRegistryRequest,
@@ -36,25 +55,6 @@ import {
     UpdateApiGatewayRequest,
     UpdateFunctionRequest,
 } from './types';
-
-import {
-    ApiGatewayInfo,
-    FunctionInfo,
-    MessageQueueInfo,
-    S3BucketInfo,
-    ServiceAccountInfo,
-    TriggerInfo,
-} from '../types/common';
-import { fileToBase64 } from './helpers';
-import { getYcConfig } from '../utils/yc-config';
-import { getEnv } from '../utils/get-env';
-import {
-    log,
-    ProgressReporter,
-} from '../utils/logging';
-import { S3Event } from '../types/events';
-import Serverless from '../types/serverless';
-import { Package } from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/serverless/functions/v1/function';
 
 const PROVIDER_NAME = 'yandex-cloud';
 
@@ -148,9 +148,10 @@ export class YandexCloudProvider implements ServerlessPlugin {
     }
 
     firstValue(values: { value: unknown }[]) {
-        return values.reduce((result, current) => {
-            return result.value ? result : current;
-        }, {} as { value: unknown });
+        return values.reduce(
+            (result, current) => (result.value ? result : current),
+            {} as { value: unknown },
+        );
     }
 
     getStageSourceValue() {
@@ -159,12 +160,14 @@ export class YandexCloudProvider implements ServerlessPlugin {
             ['serverless', 'config', 'stage'],
             ['serverless', 'service', 'provider', 'stage'],
         ]);
+
         return this.firstValue(values);
     }
 
     getStage() {
         const defaultStage = 'dev';
         const stageSourceValue = this.getStageSourceValue();
+
         return stageSourceValue.value || defaultStage;
     }
 
@@ -574,6 +577,7 @@ export class YandexCloudProvider implements ServerlessPlugin {
             serviceAccountId: request.serviceAccount,
             environment: request.environment,
         };
+
         if ('code' in request.artifact) {
             createVersionRequest.content = Buffer.from(fileToBase64(request.artifact.code), 'base64');
         } else {

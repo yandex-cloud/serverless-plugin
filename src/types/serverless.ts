@@ -1,11 +1,11 @@
-import PluginManager from './plugin-manager';
-// import AwsProvider = require('serverless/plugins/aws/provider/awsProvider');
-import Service from './service';
-import { YandexCloudProvider } from '../provider/provider';
+/* eslint-disable @typescript-eslint/no-namespace */
+
 import Utils = require('serverless/classes/Utils');
 import YamlParser = require('serverless/classes/YamlParser');
-import { Event } from './events';
-
+import { YandexCloudProvider } from '../provider/provider';
+import * as events from './events';
+import PluginManager from './plugin-manager';
+import Service from './service';
 
 declare namespace Serverless {
     interface Options {
@@ -30,7 +30,7 @@ declare namespace Serverless {
         timeout?: number | undefined;
         memorySize?: number | undefined;
         environment?: { [name: string]: string } | undefined;
-        events: Event[];
+        events: events.Event[];
         tags?: { [key: string]: string } | undefined;
     }
 
@@ -64,11 +64,12 @@ declare namespace Serverless {
 declare class Serverless {
     cli: {
         /**
-         * @deprecated starting from Serverless V3, this method is deprecated, see https://www.serverless.com/framework/docs/guides/plugins/cli-output
+         * @deprecated starting from Serverless V3, this method is deprecated,
+         * see https://www.serverless.com/framework/docs/guides/plugins/cli-output
          */
         log(message: string, entity?: string, options?: Serverless.LogOptions): null;
     };
-    providers: {};
+    providers: Record<string, unknown>;
     utils: Utils;
     variables: {
         populateService(): Promise<any>;
@@ -89,7 +90,7 @@ declare class Serverless {
         defineTopLevelProperty(provider: string, schema: Record<string, unknown>): void;
     };
 
-    constructor(config?: {});
+    constructor(config?: Record<string, unknown>);
 
     init(): Promise<any>;
 

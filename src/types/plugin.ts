@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/indent, @typescript-eslint/no-namespace */
 import Serverless from './serverless';
 
 declare namespace Plugin {
@@ -9,7 +10,7 @@ declare namespace Plugin {
         [command: string]: {
             usage?: string | undefined;
             lifecycleEvents?: string[] | undefined;
-            commands?: { [command: string]: {} } | undefined;
+            commands?: { [command: string]: Record<string, unknown> } | undefined;
             options?:
                 | {
                 [option: string]: {
@@ -60,7 +61,7 @@ declare namespace Plugin {
     }
 
     interface PluginStatic {
-        new (serverless: Serverless, options: Serverless.Options, logging: Logging): Plugin;
+        new(serverless: Serverless, options: Serverless.Options, logging: Logging): Plugin;
     }
 }
 
