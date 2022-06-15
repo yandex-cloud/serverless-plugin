@@ -263,9 +263,8 @@ export class YandexCloudDeploy implements ServerlessPlugin {
 
         if (providerConfig?.httpApi) {
             const apiGatewayInfo = await this.provider.getApiGateway();
-            const apiGateway = new ApiGateway(this.serverless, this, apiGatewayInfo);
+            const apiGateway = new ApiGateway(this.serverless, this, apiGatewayInfo, Object.values(this.functionRegistry));
 
-            apiGateway.setNewState({ functions: Object.values(this.functionRegistry) });
             await apiGateway.sync();
         }
         progressReporter.remove();

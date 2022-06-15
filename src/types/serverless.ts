@@ -7,9 +7,10 @@ import * as events from './events';
 import PluginManager from './plugin-manager';
 import Service from './service';
 
-//I had to redeclare Serverless typings here to eliminate typecasting for the `getProvider` method and
+// I had to redeclare Serverless typings here to eliminate typecasting for the `getProvider` method and
 // remove unnecessary inheriting YandexCloudProvider from AwsProvider.
 // Unfortunately, Serverless typings are handwritten and do not fully reflect Serverless complexity.
+
 declare namespace Serverless {
     interface Options {
         function?: string | undefined;

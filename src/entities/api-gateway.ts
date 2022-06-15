@@ -1,18 +1,19 @@
-import { YCFunction } from './function';
-import { UpdateApiGatewayRequest } from '../provider/types';
+import { YandexCloudDeploy } from '../deploy/deploy';
 import { YandexCloudProvider } from '../provider/provider';
+import { UpdateApiGatewayRequest } from '../provider/types';
+import { ApiGatewayInfo } from '../types/common';
+import Serverless from '../types/serverless';
 import {
     log,
     progress,
 } from '../utils/logging';
+import { YCFunction } from './function';
 import { OpenApiSpec } from './openapi-spec';
-import Serverless from '../types/serverless';
-import { YandexCloudDeploy } from '../deploy/deploy';
 
 interface ApiGatewayState {
     id?: string;
     name: string;
-    openapiSpec?: string;
+    openapiSpec: string;
 }
 
 interface ApiGatewayNewState {
@@ -24,8 +25,16 @@ export class ApiGateway {
     private readonly initialState: ApiGatewayState;
     private newState?: ApiGatewayNewState;
 
-    constructor(private serverless: Serverless, private deploy: YandexCloudDeploy, initial: ApiGatewayState) {
-        this.initialState = initial;
+    constructor(
+        private serverless: Serverless,
+        private deploy: YandexCloudDeploy,
+        initial: ApiGatewayInfo,
+        functions: YCFunction[],
+    ) {
+        this.initialState = {
+            ...initial,
+            openapiSpec: this.constructOpenApiSpec(functions),
+        };
         this.id = initial?.id;
     }
 
