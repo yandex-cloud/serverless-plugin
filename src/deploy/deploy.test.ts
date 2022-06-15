@@ -81,6 +81,9 @@ describe('Deploy', () => {
 
         await deploy.deploy();
         expect(providerMock.createFunction).toBeCalledTimes(3);
+        expect(providerMock.createFunction.mock.calls[0][0].artifact).toEqual({
+            code: 'codePath',
+        });
         expect(providerMock.createFunction.mock.calls[0][0].serviceAccount).toBe('SA_ID');
         expect(providerMock.createFunction.mock.calls[2][0].environment).toEqual({ foo: 'bar' });
     });

@@ -160,7 +160,7 @@ export class YCFunction {
         const requestParams = {
             ...this.newState.params,
             runtime: this.serverless.service.provider.runtime,
-            ...artifact,
+            artifact,
             serviceAccount: this.deploy.getServiceAccountId(this.newState.params.account),
         };
         const response = await provider.createFunction(requestParams, progressReporter);
