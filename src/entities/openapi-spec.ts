@@ -62,7 +62,7 @@ export class OpenApiSpec {
     }
 
     toString() {
-        return JSON.stringify(this);
+        return JSON.stringify(this.toJson());
     }
 
     toJson() {

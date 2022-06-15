@@ -35,6 +35,8 @@ describe('Deploy', () => {
             createContainerRegistry: jest.fn(),
             removeContainerRegistry: jest.fn(),
             getContainerRegistries: jest.fn(),
+            getApiGateway: jest.fn(),
+            createApiGateway: jest.fn(),
         };
 
         providerMock.getFunctions.mockReturnValue([]);
@@ -150,6 +152,28 @@ describe('Deploy', () => {
 
         await deploy.deploy();
         expect(providerMock.createFunction).toBeCalledTimes(1);
+    });
+
+    it('deploy API Gateway', async () => {
+        serverlessMock.service = {
+            functions: {
+                func1: { name: 'yc-nodejs-dev-func1' },
+                func2: { name: 'yc-nodejs-dev-func2' },
+            },
+            package: { artifact: 'codePath' },
+            provider: {
+                runtime: 'runtime',
+                httpApi: { payload: '1.0' },
+            },
+        };
+
+        providerMock.createFunction.mockReturnValue({ id: 'id1' });
+        providerMock.getApiGateway.mockReturnValue({ name: 'apigw' });
+        const deploy = new YandexCloudDeploy(serverlessMock, { ...mockOptions, function: 'func1' });
+
+        await deploy.deploy();
+        expect(providerMock.createFunction).toBeCalledTimes(1);
+        expect(providerMock.createApiGateway).toBeCalledTimes(1);
     });
 
     it('deploy function with timer', async () => {

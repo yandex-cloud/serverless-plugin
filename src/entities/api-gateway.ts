@@ -16,14 +16,9 @@ interface ApiGatewayState {
     openapiSpec: string;
 }
 
-interface ApiGatewayNewState {
-    openapiSpec: string;
-}
-
 export class ApiGateway {
     public id?: string;
     private readonly initialState: ApiGatewayState;
-    private newState?: ApiGatewayNewState;
 
     constructor(
         private serverless: Serverless,
@@ -33,29 +28,19 @@ export class ApiGateway {
     ) {
         this.initialState = {
             ...initial,
-            openapiSpec: this.constructOpenApiSpec(functions),
+            openapiSpec: this.constructOpenApiSpec(functions, initial.name),
         };
         this.id = initial?.id;
-    }
-
-    setNewState(input: { functions: YCFunction[] }) {
-        this.newState = {
-            openapiSpec: this.constructOpenApiSpec(input.functions),
-        };
     }
 
     async sync() {
         const provider = this.serverless.getProvider('yandex-cloud') as YandexCloudProvider;
 
-        if (!this.newState) {
-            return;
-        }
         const progressReporter = progress.create({});
 
         if (this.id) {
             const requestParams: UpdateApiGatewayRequest = {
                 ...this.initialState,
-                ...this.newState,
                 id: this.id,
             };
 
@@ -74,7 +59,6 @@ export class ApiGateway {
         try {
             const requestParams = {
                 ...this.initialState,
-                ...this.newState,
             };
 
             progressReporter.update('Creating API Gateway');
@@ -88,8 +72,8 @@ export class ApiGateway {
         }
     }
 
-    private constructOpenApiSpec(functions: YCFunction[]): string {
-        const spec = new OpenApiSpec(this.serverless, this.deploy, this.initialState.name, functions);
+    private constructOpenApiSpec(functions: YCFunction[], name: string): string {
+        const spec = new OpenApiSpec(this.serverless, this.deploy, name, functions);
 
         return spec.toString();
     }
