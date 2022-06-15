@@ -1,27 +1,6 @@
 import { YandexCloudRemove } from './remove';
 import Serverless from '../types/serverless';
 
-jest.mock('../utils/logging', () => ({
-    log: {
-        error: jest.fn(),
-        warning: jest.fn(),
-        notice: {
-            skip: jest.fn(),
-        },
-        info: jest.fn(),
-        debug: jest.fn(),
-        verbose: jest.fn(),
-        success: jest.fn(),
-    },
-    writeText: jest.fn(),
-    progress: {
-        create: jest.fn(() => ({
-            update: jest.fn(),
-            remove: jest.fn(),
-        })),
-    },
-}));
-
 describe('Remove', () => {
     let providerMock: any;
     let serverlessMock: any;
@@ -64,10 +43,18 @@ describe('Remove', () => {
                 func1: {
                     name: 'yc-nodejs-dev-func1',
                     events: [
-                        { cron: { name: 'yc-nodejs-dev-func1-cron', id: 'id2' } },
+                        {
+                            cron: {
+                                name: 'yc-nodejs-dev-func1-cron',
+                                id: 'id2',
+                            },
+                        },
                     ],
                 },
-                func2: { name: 'yc-nodejs-dev-func2', events: [] },
+                func2: {
+                    name: 'yc-nodejs-dev-func2',
+                    events: [],
+                },
             },
             package: { artifact: 'codePath' },
             provider: { runtime: 'runtime' },
@@ -80,10 +67,22 @@ describe('Remove', () => {
         };
         serverlessMock.cli = { log: jest.fn() };
 
-        providerMock.getFunctions.mockReturnValue([{ name: 'yc-nodejs-dev-func1', id: 'id1' }]);
-        providerMock.getTriggers.mockReturnValue([{ name: 'yc-nodejs-dev-func1-cron', id: 'id2' }]);
-        providerMock.getServiceAccounts.mockReturnValue([{ name: 'triggerSA', id: 'id3' }]);
-        providerMock.getApiGateway.mockReturnValue({ name: 'apiGw', id: 'id4' });
+        providerMock.getFunctions.mockReturnValue([{
+            name: 'yc-nodejs-dev-func1',
+            id: 'id1',
+        }]);
+        providerMock.getTriggers.mockReturnValue([{
+            name: 'yc-nodejs-dev-func1-cron',
+            id: 'id2',
+        }]);
+        providerMock.getServiceAccounts.mockReturnValue([{
+            name: 'triggerSA',
+            id: 'id3',
+        }]);
+        providerMock.getApiGateway.mockReturnValue({
+            name: 'apiGw',
+            id: 'id4',
+        });
         const remove = new YandexCloudRemove(serverlessMock, mockOptions);
 
         await remove.remove();

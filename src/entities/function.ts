@@ -136,9 +136,7 @@ export class YCFunction {
             throw new Error('Provider\'s runtime is not defined');
         }
 
-        const progressReporter = progress.create({
-            name: `function-${this.newState.name}`,
-        });
+        const progressReporter = progress.create({});
 
         const artifact = await this.prepareArtifact();
 

@@ -1,23 +1,6 @@
 import { YandexCloudLogs } from './logs';
 import Serverless from '../types/serverless';
 
-jest.mock('../utils/logging', () => ({
-    log: {
-        error: jest.fn(),
-        warning: jest.fn(),
-        notice: jest.fn(),
-        info: jest.fn(),
-        debug: jest.fn(),
-        verbose: jest.fn(),
-        success: jest.fn(),
-    },
-    writeText: jest.fn(),
-    progress: jest.fn(() => ({
-        update: jest.fn(),
-        remove: jest.fn(),
-    })),
-}));
-
 describe('Logs', () => {
     let providerMock: any;
     let serverlessMock: any;

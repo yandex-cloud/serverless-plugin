@@ -4,15 +4,9 @@ import Serverless from '../types/serverless';
 
 jest.mock('../utils/logging', () => ({
     log: {
-        error: jest.fn(),
         warning: jest.fn(),
         notice: jest.fn(),
-        info: jest.fn(),
-        debug: jest.fn(),
-        verbose: jest.fn(),
-        success: jest.fn(),
     },
-    writeText: jest.fn(),
 }));
 
 describe('Info', () => {
@@ -53,9 +47,6 @@ describe('Info', () => {
             },
             package: { artifact: 'codePath' },
             provider: { runtime: 'runtime' },
-        };
-        serverlessMock.cli = {
-            log: jest.fn(),
         };
 
         providerMock.getFunctions.mockReturnValue([{ name: 'yc-nodejs-dev-func1', id: 'id1' }]);

@@ -83,9 +83,7 @@ export class YandexCloudDeploy implements ServerlessPlugin {
     }
 
     async deployService(describedFunctions: Record<string, ServerlessFunc>) {
-        const progressReporter = progress.create({
-            name: 'deploy',
-        });
+        const progressReporter = progress.create({});
 
         progressReporter.update('Fetching functions');
         for (const func of await this.provider.getFunctions()) {

@@ -2,25 +2,6 @@ import fs from 'fs';
 import { YandexCloudDeploy } from './deploy';
 import Serverless from '../types/serverless';
 
-jest.mock('../utils/logging', () => ({
-    log: {
-        error: jest.fn(),
-        warning: jest.fn(),
-        notice: jest.fn(),
-        info: jest.fn(),
-        debug: jest.fn(),
-        verbose: jest.fn(),
-        success: jest.fn(),
-    },
-    writeText: jest.fn(),
-    progress: {
-        create: jest.fn(() => ({
-            update: jest.fn(),
-            remove: jest.fn(),
-        })),
-    },
-}));
-
 describe('Deploy', () => {
     let providerMock: any;
     let serverlessMock: any;

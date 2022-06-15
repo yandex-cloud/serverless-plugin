@@ -50,9 +50,7 @@ export class ApiGateway {
         if (!this.newState) {
             return;
         }
-        const progressReporter = progress.create({
-            name: `apigw-${this.initialState.name}`,
-        });
+        const progressReporter = progress.create({});
 
         if (this.id) {
             const requestParams: UpdateApiGatewayRequest = {
