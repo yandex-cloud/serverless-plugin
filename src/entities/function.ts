@@ -1,8 +1,22 @@
-import Serverless from 'serverless';
-
-import { YandexCloudProvider } from '../provider/provider';
+import { AWSError } from 'aws-sdk/lib/error';
+import fs from 'node:fs';
+import path from 'path';
 import { YandexCloudDeploy } from '../deploy/deploy';
+import { YandexCloudProvider } from '../provider/provider';
+import {
+    CodeOrPackage,
+    UpdateFunctionRequest,
+} from '../provider/types';
 import { ServerlessFunc } from '../types/common';
+import Serverless from '../types/serverless';
+import { humanFileSize } from '../utils/formatting';
+import {
+    log,
+    progress,
+} from '../utils/logging';
+
+export const MAX_PACKAGE_SIZE = 128 * 1024 * 1024; // 128MB
+export const MAX_PACKAGE_SIZE_FOR_DIRECT_UPLOAD = 3.5 * 1024 * 1024; // 3.5MB
 
 interface FunctionState {
     id: string;
@@ -10,18 +24,16 @@ interface FunctionState {
 }
 
 interface FunctionNewState {
-    params: ServerlessFunc
+    params: ServerlessFunc;
     name: string;
 }
 
 export class YCFunction {
+    public id?: string;
     private readonly serverless: Serverless;
     private readonly deploy: YandexCloudDeploy;
     private readonly initialState?: FunctionState;
-
     private newState?: FunctionNewState;
-
-    public id?: string;
 
     constructor(serverless: Serverless, deploy: YandexCloudDeploy, initial?: FunctionState) {
         this.serverless = serverless;
@@ -30,11 +42,7 @@ export class YCFunction {
         this.id = initial?.id;
     }
 
-    setNewState(newState: FunctionNewState) {
-        this.newState = newState;
-    }
-
-    validateEnvironment(environment?: Record<string, string>) {
+    private static validateEnvironment(environment: Record<string, string> | undefined, provider: YandexCloudProvider) {
         let result = true;
 
         if (!environment) {
@@ -42,16 +50,16 @@ export class YCFunction {
         }
         for (const [k, v] of Object.entries(environment)) {
             if (!/^[A-Za-z]\w*$/.test(k)) {
-                this.serverless.cli.log(`Environment variable "${k}" name does not match with "[a-zA-Z][a-zA-Z0-9_]*"`);
+                log.error(`Environment variable "${k}" name does not match with "[a-zA-Z][a-zA-Z0-9_]*"`);
                 result = false;
             }
             if (typeof v !== 'string') {
-                this.serverless.cli.log(`Environment variable "${k}" value is not string`);
+                log.error(`Environment variable "${k}" value is not string`);
                 result = false;
                 continue;
             }
             if (v.length > 4096) {
-                this.serverless.cli.log(`Environment variable "${k}" value is too long`);
+                log.error(`Environment variable "${k}" value is too long`);
                 result = false;
             }
         }
@@ -59,59 +67,107 @@ export class YCFunction {
         return result;
     }
 
+    getNewState(): FunctionNewState | undefined {
+        return this.newState;
+    }
+
+    setNewState(newState: FunctionNewState) {
+        this.newState = newState;
+    }
+
+    async prepareArtifact(): Promise<CodeOrPackage> {
+        const provider = this.serverless.getProvider('yandex-cloud');
+        const { artifact } = this.serverless.service.package;
+        const artifactStat = fs.statSync(artifact);
+
+        if (artifactStat.size >= MAX_PACKAGE_SIZE) {
+            throw new Error(`Artifact size ${humanFileSize(artifactStat.size)} exceeds Maximum Package Size of 128MB`);
+        } else if (artifactStat.size >= MAX_PACKAGE_SIZE_FOR_DIRECT_UPLOAD) {
+            log.warning(`Artifact size ${humanFileSize(artifactStat.size)} exceeds Maximum Package Size for direct upload of 3.5MB.`);
+            const providerConfig = this.serverless.service.provider;
+            const bucketName = providerConfig.deploymentBucket ?? provider.getServerlessDeploymentBucketName();
+            const prefix = providerConfig.deploymentPrefix ?? 'serverless';
+
+            try {
+                await provider.checkS3Bucket(bucketName);
+            } catch (error) {
+                const awsErr = error as AWSError;
+
+                if (awsErr.statusCode === 404) {
+                    log.info(`No bucket ${bucketName}.`);
+                    await provider.createS3Bucket({ name: bucketName });
+                }
+            }
+            const objectName = path.join(prefix, path.basename(artifact));
+
+            await provider.putS3Object({
+                Bucket: bucketName,
+                Key: objectName,
+                Body: fs.readFileSync(artifact),
+            });
+
+            return {
+                package: {
+                    bucketName,
+                    objectName,
+                },
+            };
+        } else {
+            return {
+                code: artifact,
+            };
+        }
+    }
+
     async sync() {
-        const provider = this.serverless.getProvider('yandex-cloud') as YandexCloudProvider;
+        const provider = this.serverless.getProvider('yandex-cloud');
 
         if (!this.newState) {
-            this.serverless.cli.log(`Unknown function "${this.initialState?.name}" found`);
+            log.info(`Unknown function "${this.initialState?.name}" found`);
 
             return;
         }
 
-        if (!this.validateEnvironment(this.newState.params.environment)) {
-            return;
+        if (!YCFunction.validateEnvironment(this.newState.params.environment, provider)) {
+            throw new Error('Invalid environment');
         }
 
         if (!this.serverless.service.provider.runtime) {
-            this.serverless.cli.log('Provider\'s runtime is not defined');
-
-            return;
+            throw new Error('Provider\'s runtime is not defined');
         }
 
+        const progressReporter = progress.create({});
+
+        const artifact = await this.prepareArtifact();
+
         if (this.initialState) {
-            const requestParams = {
+            const requestParams: UpdateFunctionRequest = {
                 ...this.newState.params,
                 runtime: this.serverless.service.provider.runtime,
-                code: this.serverless.service.package.artifact,
+                artifact,
                 id: this.initialState.id,
                 serviceAccount: this.deploy.getServiceAccountId(this.newState.params.account),
             };
 
-            try {
-                await provider.updateFunction(requestParams);
+            await provider.updateFunction(requestParams, progressReporter);
+            progressReporter.remove();
 
-                this.serverless.cli.log(`Function updated\n${this.newState.name}: ${requestParams.name}`);
-            } catch (error) {
-                this.serverless.cli.log(`${error}\nFailed to update function
-            ${this.newState.name}: ${requestParams.name}`);
-            }
+            log.success(`Function updated\n${this.newState.name}: ${requestParams.name}`);
 
             return;
         }
 
-        try {
-            const requestParams = {
-                ...this.newState.params,
-                runtime: this.serverless.service.provider.runtime,
-                code: this.serverless.service.package.artifact,
-                serviceAccount: this.deploy.getServiceAccountId(this.newState.params.account),
-            };
-            const response = await provider.createFunction(requestParams);
+        const requestParams = {
+            ...this.newState.params,
+            runtime: this.serverless.service.provider.runtime,
+            artifact,
+            serviceAccount: this.deploy.getServiceAccountId(this.newState.params.account),
+        };
+        const response = await provider.createFunction(requestParams, progressReporter);
 
-            this.id = response.id;
-            this.serverless.cli.log(`Function created\n${this.newState.name}: ${requestParams.name}`);
-        } catch (error) {
-            this.serverless.cli.log(`${error}\nFailed to create function "${this.newState.name}"`);
-        }
+        progressReporter.remove();
+
+        this.id = response.id;
+        log.success(`Function created\n${this.newState.name}: ${requestParams.name}`);
     }
 }

@@ -1,13 +1,13 @@
-import Serverless from 'serverless';
 import ServerlessPlugin from 'serverless/classes/Plugin';
 import { YandexCloudProvider } from '../provider/provider';
+import { writeText } from '../utils/logging';
+import Serverless from '../types/serverless';
 
 export class YandexCloudLogs implements ServerlessPlugin {
+    hooks: ServerlessPlugin.Hooks;
     private readonly serverless: Serverless;
     private readonly options: Serverless.Options;
     private readonly provider: YandexCloudProvider;
-
-    hooks: ServerlessPlugin.Hooks;
 
     constructor(serverless: Serverless, options: Serverless.Options) {
         this.serverless = serverless;
@@ -33,6 +33,6 @@ export class YandexCloudLogs implements ServerlessPlugin {
 
         const result = await this.provider.getFunctionLogs(toLog[0].id);
 
-        this.serverless.cli.log(JSON.stringify(result));
+        writeText(JSON.stringify(result));
     }
 }

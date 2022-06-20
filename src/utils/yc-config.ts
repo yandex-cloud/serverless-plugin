@@ -3,18 +3,18 @@ import yaml from 'yaml';
 import fs from 'fs';
 import * as os from 'os';
 import { getEnv } from './get-env';
-import { logger } from './logger';
+import { log } from './logging';
 
 interface YcConfigBase {
     cloudId: string;
     folderId: string;
 }
 
-interface YcConfigOauth extends YcConfigBase{
+interface YcConfigOauth extends YcConfigBase {
     token: string;
 }
 
-interface YcConfigIam extends YcConfigBase{
+interface YcConfigIam extends YcConfigBase {
     iamToken: string;
 }
 
@@ -56,7 +56,7 @@ export const getYcConfig = (): YcConfig => {
     const isTokenDefined = Boolean(iamTokenFromEnv || oauthTokenFromEnv);
 
     if (isTokenDefined && cloudIdFromEnv && folderIdFromEnv) {
-        logger.info('Found YC configuration in environment variables, using it');
+        log.info('Found YC configuration in environment variables, using it');
 
         if (iamTokenFromEnv) {
             return {
@@ -75,7 +75,7 @@ export const getYcConfig = (): YcConfig => {
         }
     }
 
-    logger.info(`YC configuration in environment variables not found, reading yc config file: ${YC_CONFIG_PATH}`);
+    log.info(`YC configuration in environment variables not found, reading yc config file: ${YC_CONFIG_PATH}`);
 
     const config = readYcConfigFile();
     const { token, 'cloud-id': cloudId, 'folder-id': folderId } = config;

@@ -1,14 +1,14 @@
-import Serverless from 'serverless';
 import ServerlessPlugin from 'serverless/classes/Plugin';
 
 import { YandexCloudProvider } from '../provider/provider';
+import { log, writeText } from '../utils/logging';
+import Serverless from '../types/serverless';
 
 export class YandexCloudInvoke implements ServerlessPlugin {
+    hooks: ServerlessPlugin.Hooks;
     private readonly serverless: Serverless;
     private readonly options: Serverless.Options;
     private readonly provider: YandexCloudProvider;
-
-    hooks: ServerlessPlugin.Hooks;
 
     constructor(serverless: Serverless, options: Serverless.Options) {
         this.serverless = serverless;
@@ -29,13 +29,13 @@ export class YandexCloudInvoke implements ServerlessPlugin {
             .find((funcKey) => describedFunctions[funcKey].name === currFunc.name && funcKey === this.options.function));
 
         if (toInvoke.length !== 1) {
-            this.serverless.cli.log(`Function "${this.options.function}" not found`);
+            log.notice(`Function "${this.options.function}" not found`);
 
             return;
         }
 
         const result = await this.provider.invokeFunction(toInvoke[0].id);
 
-        this.serverless.cli.log(JSON.stringify(result));
+        writeText(JSON.stringify(result));
     }
 }

@@ -1,8 +1,9 @@
-import Serverless from 'serverless';
-
 import { YandexCloudProvider } from '../provider/provider';
 import { YandexCloudDeploy } from '../deploy/deploy';
 import { TriggerInfo, TriggerType } from '../types/common';
+import { log } from '../utils/logging';
+import Serverless from '../types/serverless';
+import { Event } from '../types/events';
 
 interface RetryOptions {
     attempts: number;
@@ -54,7 +55,7 @@ interface YmqTriggerState extends BaseTriggerState {
         queue: string;
         queueAccount: string;
         retry: RetryOptions,
-    }
+    };
 }
 
 interface CrTriggerState extends BaseTriggerState {
@@ -71,20 +72,18 @@ interface CrTriggerState extends BaseTriggerState {
         dlqAccountId?: string;
         dlqAccount?: string;
         retry: RetryOptions,
-    }
+    };
 }
 
 type TriggerState = CrTriggerState | YmqTriggerState | S3TriggerState | CronTriggerState;
 
 export class Trigger {
+    public id?: string;
     private readonly provider: YandexCloudProvider;
     private readonly serverless: Serverless;
     private readonly initialState?: TriggerInfo;
     private readonly deploy: YandexCloudDeploy;
-
     private newState?: TriggerState;
-
-    public id?: string;
 
     constructor(serverless: Serverless, deploy: YandexCloudDeploy, initial?: TriggerInfo) {
         this.provider = serverless.getProvider('yandex-cloud') as YandexCloudProvider;
@@ -93,79 +92,67 @@ export class Trigger {
         this.deploy = deploy;
     }
 
-    setNewState(newState: TriggerState) {
-        this.newState = newState;
+    static supportedTriggers(): TriggerType[] {
+        return [TriggerType.CRON, TriggerType.S3, TriggerType.YMQ, TriggerType.CR];
     }
 
-    private creators() {
-        return {
-            cron: this.provider.createCronTrigger,
-            s3: this.provider.createS3Trigger,
-            ymq: this.provider.createYMQTrigger,
-            cr: this.provider.createCRTrigger,
-        };
+    static normalizeEvent(event: Event) {
+        // @ts-ignore
+        const foundTriggerType = Trigger.supportedTriggers().find((type) => event[type]);
+
+        // @ts-ignore
+        return foundTriggerType && { type: foundTriggerType, params: event[foundTriggerType] };
+    }
+
+    setNewState(newState: TriggerState) {
+        this.newState = newState;
     }
 
     async sync() {
         if (!this.newState) {
             if (!this.initialState?.id) {
-                this.serverless.cli.log('Trigger id is not defined');
+                log.info('Trigger id is not defined');
 
                 return;
             }
 
-            try {
-                await this.provider.removeTrigger(this.initialState.id);
-
-                this.serverless.cli.log(`Trigger removed "${this.initialState.name}"`);
-            } catch (error) {
-                this.serverless.cli.log(`${error}\nFailed to remove trigger "${this.initialState.name}"`);
-            }
+            await this.provider.removeTrigger(this.initialState.id);
+            log.success(`Trigger removed "${this.initialState.name}"`);
 
             return;
         }
 
         if (this.initialState) {
             if (!this.initialState?.id) {
-                this.serverless.cli.log('Trigger id is not defined');
+                log.error('Trigger id is not defined');
 
                 return;
             }
 
-            try {
-                await this.provider.removeTrigger(this.initialState.id);
-                this.serverless.cli.log(`Trigger removed "${this.initialState.name}"`);
-            } catch (error) {
-                this.serverless.cli.log(`${error}\nFailed to remove trigger "${this.initialState.name}"`);
-            }
+            await this.provider.removeTrigger(this.initialState.id);
+            log.success(`Trigger removed "${this.initialState.name}"`);
         }
 
         const triggerName = `${this.newState.function.name}-${this.newState.type}`;
 
         if (!this.newState.function.name) {
-            this.serverless.cli.log('Function name is not defined');
-
-            return;
+            throw new Error('Function name is not defined');
         }
 
-        try {
-            const response = await this.creators()[this.newState.type]({
-                name: triggerName,
-                queueServiceAccount: this.queueServiceAccount(),
-                queueId: this.queueId(),
-                functionId: this.deploy.getFunctionId(this.newState.function.name),
-                serviceAccount: this.deploy.getServiceAccountId(this.newState.params.account),
-                dlqId: this.dlqId(),
-                dlqAccountId: this.dlqServiceAccount(),
-                registryId: this.crId(),
-                ...this.newState.params,
-            });
+        const response = await this.creators()[this.newState.type]({
+            name: triggerName,
+            queueServiceAccount: this.queueServiceAccount(),
+            queueId: this.queueId(),
+            functionId: this.deploy.getFunctionId(this.newState.function.name),
+            serviceAccount: this.deploy.getServiceAccountId(this.newState.params.account),
+            dlqId: this.dlqId(),
+            dlqAccountId: this.dlqServiceAccount(),
+            registryId: this.crId(),
+            ...this.newState.params,
+        });
 
-            this.id = response.id;
-            this.serverless.cli.log(`Trigger created "${triggerName}"`);
-        } catch (error) {
-            this.serverless.cli.log(`${error}\nFailed to create trigger "${triggerName}"`);
-        }
+        this.id = response?.id;
+        log.success(`Trigger created "${triggerName}"`);
     }
 
     queueServiceAccount() {
@@ -217,15 +204,12 @@ export class Trigger {
         return crId;
     }
 
-    static supportedTriggers(): TriggerType[] {
-        return [TriggerType.CRON, TriggerType.S3, TriggerType.YMQ, TriggerType.CR];
-    }
-
-    static normalizeEvent(event: Serverless.Event) {
-        // @ts-ignore
-        const foundTriggerType = Trigger.supportedTriggers().find((type) => event[type]);
-
-        // @ts-ignore
-        return foundTriggerType && { type: foundTriggerType, params: event[foundTriggerType] };
+    private creators() {
+        return {
+            cron: this.provider.createCronTrigger,
+            s3: this.provider.createS3Trigger,
+            ymq: this.provider.createYMQTrigger,
+            cr: this.provider.createCRTrigger,
+        };
     }
 }
