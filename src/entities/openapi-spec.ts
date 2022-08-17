@@ -1,4 +1,3 @@
-import bind from 'bind-decorator';
 import _ from 'lodash';
 import { OpenAPIV3 } from 'openapi-types';
 import { YandexCloudDeploy } from '../deploy/deploy';
@@ -66,7 +65,8 @@ export class OpenApiSpec {
     }
 
     toJson() {
-        return Object.fromEntries(Object.entries(this.spec).filter((field) => field[1] !== undefined));
+        return Object.fromEntries(Object.entries(this.spec)
+            .filter((field) => field[1] !== undefined));
     }
 
     mapMethod(method: HttpMethodAlias): HttpMethod {
@@ -105,12 +105,11 @@ export class OpenApiSpec {
         };
     }
 
-    @bind
-    toPathItemObject<T>(func: YCFunction, event: Event): [string, YcPathItemObject<T>] | undefined {
+    toPathItemObject = <T>(func: YCFunction, event: Event): [string, YcPathItemObject<T>] | undefined => {
         if (!event.http || typeof event.http === 'string' || func.id === undefined) {
             return undefined;
         }
-        const providerConfig: ProviderConfig | undefined = this.serverless.service?.provider as any;
+        const providerConfig: ProviderConfig | undefined = this.serverless.service?.provider;
 
         const { http } = event;
         const acc = func.getNewState()?.params.account;
@@ -144,7 +143,7 @@ export class OpenApiSpec {
             {
                 [this.mapMethod(http.method)]: operation,
             }];
-    }
+    };
 
     toPathTuples<T>(func: YCFunction): [string, YcPathItemObject<T>][] {
         const events = func.getNewState()?.params.events ?? [];
