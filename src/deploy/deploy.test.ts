@@ -179,6 +179,23 @@ describe('Deploy', () => {
         expect(providerMock.createApiGateway).toBeCalledTimes(1);
     });
 
+    it('do not deploy empty API Gateway', async () => {
+        serverlessMock.service = {
+            functions: {},
+            package: { artifact: 'codePath' },
+            provider: {
+                runtime: 'runtime',
+                httpApi: { payload: '1.0' },
+            },
+        };
+
+        providerMock.getApiGateway.mockReturnValue({ name: 'apigw' });
+        const deploy = new YandexCloudDeploy(serverlessMock, { ...mockOptions });
+
+        await deploy.deploy();
+        expect(providerMock.createApiGateway).not.toBeCalled();
+    });
+
     it('deploy function with timer', async () => {
         serverlessMock.service = {
             functions: {
