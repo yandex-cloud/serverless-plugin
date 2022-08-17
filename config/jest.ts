@@ -14,7 +14,14 @@ export default {
     preset: 'ts-jest',
     rootDir: path.resolve('./src/'),
     transform: {
-        '^.+\\.ts$': 'ts-jest',
+        '^.+\\.ts$': ['@swc/jest', {
+            jsc: {
+                parser: {
+                    syntax: 'typescript',
+                    tsx: true,
+                },
+            },
+        }],
     },
     testEnvironment: 'node',
 
