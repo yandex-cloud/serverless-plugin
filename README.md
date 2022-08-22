@@ -34,6 +34,20 @@ To remove all deployed resources:
 
     serverless remove
 
+## Configuration variables from Lockbox
+
+This plugin adds [configuration variable source](https://www.serverless.com/framework/docs/providers/aws/guide/variables), which allows to retrieve secrets from [Lockbox](https://cloud.yandex.com/en/docs/lockbox/).
+Usage example:
+```yaml
+functions:
+  simple:
+    handler: dist/index.hello
+    memorySize: 128
+    timeout: '5'
+    account: function-sa
+    environment:
+      DB_PASSWORD: ${lockbox:<lockbox_secret_id>/<lockbox_secret_key>}
+```
 
 ## Supported resources
 - Cloud Functions

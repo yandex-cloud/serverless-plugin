@@ -9,6 +9,7 @@ import { YandexCloudInfo } from './info/info';
 import { YandexCloudLogs } from './logs/logs';
 import { extendConfigSchema } from './extend-config-schema';
 import Serverless from './types/serverless';
+import { YandexCloudLockbox } from './lockbox/lockbox';
 
 class YandexCloudServerlessPlugin implements ServerlessPlugin {
     hooks: ServerlessPlugin.Hooks = {};
@@ -25,6 +26,7 @@ class YandexCloudServerlessPlugin implements ServerlessPlugin {
         this.serverless.pluginManager.addPlugin(YandexCloudInvoke);
         this.serverless.pluginManager.addPlugin(YandexCloudInfo);
         this.serverless.pluginManager.addPlugin(YandexCloudLogs);
+        this.serverless.pluginManager.addPlugin(YandexCloudLockbox);
 
         extendConfigSchema(this.serverless);
     }
