@@ -60,6 +60,7 @@ const PROVIDER_NAME = 'yandex-cloud';
 
 const {
     containerregistry: { registry_service: CloudApiRegistryService },
+    lockbox: { payload_service: CloudApiLockboxPayloadService },
     serverless: {
         apigateway_service: CloudApiApiGatewayService,
         functions_function_service: CloudApiFunctionsService,
@@ -90,6 +91,7 @@ export class YandexCloudProvider implements ServerlessPlugin {
     private functions: WrappedServiceClientType<typeof serviceClients.FunctionServiceClient.service>;
     private folders: WrappedServiceClientType<typeof serviceClients.FolderServiceClient.service>;
     private containerRegistryService: WrappedServiceClientType<typeof serviceClients.RegistryServiceClient.service>;
+    private lockboxPayloadService: WrappedServiceClientType<typeof serviceClients.PayloadServiceClient.service>;
     private ymq: AWS.SQS;
     private s3: AWS.S3;
 
@@ -118,6 +120,7 @@ export class YandexCloudProvider implements ServerlessPlugin {
         this.functions = this.session.client(serviceClients.FunctionServiceClient);
         this.folders = this.session.client(serviceClients.FolderServiceClient);
         this.containerRegistryService = this.session.client(serviceClients.RegistryServiceClient);
+        this.lockboxPayloadService = this.session.client(serviceClients.PayloadServiceClient);
 
         // Init AWS SDK
         const awsConfig = {
@@ -761,6 +764,19 @@ export class YandexCloudProvider implements ServerlessPlugin {
         }));
 
         return this.check(operation);
+    }
+
+    async getLockboxSecretKey(secretId: string): Promise<Record<string, string | undefined>> {
+        const result: Record<string, string | undefined> = {};
+        const response = await this.lockboxPayloadService.get(CloudApiLockboxPayloadService.GetPayloadRequest.fromPartial({
+            secretId,
+        }));
+
+        for (const entry of response.entries) {
+            result[entry.key] = entry.textValue;
+        }
+
+        return result;
     }
 
     private async check(operation: Operation): Promise<SuccessfulOperation> {
