@@ -77,7 +77,27 @@ export class YCFunction {
 
     async prepareArtifact(): Promise<CodeOrPackage> {
         const provider = this.serverless.getProvider('yandex-cloud');
-        const { artifact } = this.serverless.service.package;
+
+        let artifact: string;
+
+        if (this.serverless.service.package?.individually) {
+            const fnName = this.newState?.name;
+
+            if (!fnName) {
+                throw new Error('Function name is not defined');
+            }
+
+            const fn = this.serverless.service.getFunction(fnName);
+
+            if (!fn.package?.artifact) {
+                throw new Error(`Packaging set to 'individually' but function '${fnName}' has no package property`);
+            }
+
+            artifact = fn.package.artifact;
+        } else {
+            artifact = this.serverless.service.package.artifact;
+        }
+
         const artifactStat = fs.statSync(artifact);
 
         if (artifactStat.size >= MAX_PACKAGE_SIZE) {
