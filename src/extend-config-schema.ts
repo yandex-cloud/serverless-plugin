@@ -374,6 +374,17 @@ export const extendConfigSchema = (sls: Serverless) => {
                 vpc: { type: 'string' }, // Override provider configuration
                 labels: { $ref: '#/definitions/resourceManagerLabels' }, // Override provider configuration
                 account: { type: 'string' },
+                package: {
+                    type: 'object',
+                    properties: {
+                        artifact: { type: 'string' },
+                        exclude: { type: 'array', items: { type: 'string' } },
+                        include: { type: 'array', items: { type: 'string' } },
+                        individually: { type: 'boolean' },
+                        patterns: { type: 'array', items: { type: 'string' } },
+                    },
+                    additionalProperties: false,
+                },
             },
         },
     });
