@@ -1,6 +1,6 @@
 {
   "name": "@yandex-cloud/serverless-plugin",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Provider plugin for the Serverless Framework which adds support for Yandex Cloud Functions.",
   "keywords": [
     "yandex-cloud",
