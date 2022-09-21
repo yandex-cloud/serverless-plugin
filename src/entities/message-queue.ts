@@ -7,6 +7,8 @@ interface MessageQueueState {
     id?: string;
     url?: string;
     name: string;
+    fifo?: boolean;
+    fifoContentDeduplication?: boolean;
 }
 
 export class MessageQueue {
@@ -40,6 +42,8 @@ export class MessageQueue {
 
         const response = await provider.createMessageQueue({
             name: this.newState.name,
+            fifo: this.newState.fifo,
+            fifoContentDeduplication: this.newState.fifoContentDeduplication,
         });
 
         this.id = response.id;

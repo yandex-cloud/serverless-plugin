@@ -201,18 +201,15 @@ export class YandexCloudDeploy implements ServerlessPlugin {
                 }
 
                 for (const [name, params] of ymqResources) {
-                    if (name in this.messageQueueRegistry) {
-                        this.messageQueueRegistry[name].setNewState({
-                            name,
-                            // params,
-                        });
-                    } else {
+                    if (!this.messageQueueRegistry[name]) {
                         this.messageQueueRegistry[name] = new MessageQueue(this.serverless);
-                        this.messageQueueRegistry[name].setNewState({
-                            name,
-                            // params,
-                        });
                     }
+
+                    this.messageQueueRegistry[name].setNewState({
+                        name,
+                        fifo: params.fifo,
+                        fifoContentDeduplication: params.fifoContentDeduplication,
+                    });
                 }
             }
 
