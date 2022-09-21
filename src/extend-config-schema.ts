@@ -226,7 +226,6 @@ const schemaResources: JSONSchema7 = {
                         fifo: { type: 'boolean' },
                         fifoContentDeduplication: { type: 'boolean' },
                     },
-                    required: ['name'],
                 },
                 {
                     type: 'object',
