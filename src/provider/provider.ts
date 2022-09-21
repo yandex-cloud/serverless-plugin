@@ -655,13 +655,18 @@ export class YandexCloudProvider implements ServerlessPlugin {
     }
 
     async createMessageQueue(request: CreateMessageQueueRequest) {
-        const createResponse = await this.ymq.createQueue({
+        const createRequest: AWS.SQS.CreateQueueRequest = {
             QueueName: request.name,
-            Attributes: {
-                FifoQueue: request.fifo ? 'true' : 'false',
+        };
+
+        if (request.fifo) {
+            createRequest.Attributes = {
+                FifoQueue: 'true',
                 ContentBasedDeduplication: request.fifoContentDeduplication ? 'true' : 'false',
-            },
-        }).promise();
+            };
+        }
+
+        const createResponse = await this.ymq.createQueue(createRequest).promise();
 
         const url = createResponse.QueueUrl;
 
