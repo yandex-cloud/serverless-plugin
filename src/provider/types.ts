@@ -53,7 +53,11 @@ export interface CreateCrTriggerRequest extends InvokeFunctionRequest {
 // TODO: get rid of 'any'
 export type CreateServiceAccountRequest = any;
 // TODO: get rid of 'any'
-export type CreateMessageQueueRequest = any;
+export type CreateMessageQueueRequest = {
+    name: string;
+    fifo?: boolean;
+    fifoContentDeduplication?: boolean;
+};
 // TODO: get rid of 'any'
 export type CreateS3BucketRequest = any;
 // TODO: get rid of 'any'

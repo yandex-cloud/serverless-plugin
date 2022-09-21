@@ -223,7 +223,10 @@ const schemaResources: JSONSchema7 = {
                             enum: ['yc::MessageQueue'],
                         },
                         name: { type: 'string' },
+                        fifo: { type: 'boolean' },
+                        fifoContentDeduplication: { type: 'boolean' },
                     },
+                    required: ['name'],
                 },
                 {
                     type: 'object',
