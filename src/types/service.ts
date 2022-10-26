@@ -58,4 +58,5 @@ export default interface Service {
     validate(): Service;
 
     update(data: Record<string, unknown>): Record<string, unknown>;
+
 }
