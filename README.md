@@ -49,6 +49,22 @@ functions:
       DB_PASSWORD: ${lockbox:<lockbox_secret_id>/<lockbox_secret_key>}
 ```
 
+## Environment Variables
+#### API Endpoints
+- S3_ENDPOINT
+- SQS_ENDPOINT
+- YC_ENDPOINT
+
+#### AWS Access Key (for YMQ and Object Storage manipulations)
+- AWS_ACCESS_KEY_ID
+- AWS_SECRET_ACCESS_KEY
+- 
+#### Cloud API Authentication
+- YC_OAUTH_TOKEN_ENV
+- YC_IAM_TOKEN_ENV
+- YC_CLOUD_ID
+- YC_FOLDER_ID
+
 ## Supported resources
 - Cloud Functions
 - Triggers
