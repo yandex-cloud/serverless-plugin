@@ -33,7 +33,7 @@ import {
 } from '../types/common';
 import { S3Event } from '../types/events';
 import Serverless from '../types/serverless';
-import { getEnv } from '../utils/get-env';
+import { getEnv, getEnvStrict } from '../utils/get-env';
 import {
     log,
     ProgressReporter,
@@ -57,6 +57,8 @@ import {
 } from './types';
 
 const PROVIDER_NAME = 'yandex-cloud';
+const S3_DEFAULT_ENDPOINT = 'https://storage.yandexcloud.net';
+const SQS_DEFAULT_ENDPOINT = 'https://message-queue.api.cloud.yandex.net';
 
 const {
     containerregistry: { registry_service: CloudApiRegistryService },
@@ -103,24 +105,24 @@ export class YandexCloudProvider implements ServerlessPlugin {
 
         // Init YC API client
         const config = getYcConfig();
-
         const sessionConfig = 'token' in config ? {
             oauthToken: config.token,
         } : {
             iamToken: config.iamToken,
         };
+        const endpoint = config.endpoint || undefined;
 
         this.session = new Session(sessionConfig);
         this.folderId = config.folderId;
         this.cloudId = config.cloudId;
 
-        this.apiGateways = this.session.client(serviceClients.ApiGatewayServiceClient);
-        this.triggers = this.session.client(serviceClients.TriggerServiceClient);
-        this.serviceAccounts = this.session.client(serviceClients.ServiceAccountServiceClient);
-        this.functions = this.session.client(serviceClients.FunctionServiceClient);
-        this.folders = this.session.client(serviceClients.FolderServiceClient);
-        this.containerRegistryService = this.session.client(serviceClients.RegistryServiceClient);
-        this.lockboxPayloadService = this.session.client(serviceClients.PayloadServiceClient);
+        this.apiGateways = this.session.client(serviceClients.ApiGatewayServiceClient, endpoint);
+        this.triggers = this.session.client(serviceClients.TriggerServiceClient, endpoint);
+        this.serviceAccounts = this.session.client(serviceClients.ServiceAccountServiceClient, endpoint);
+        this.functions = this.session.client(serviceClients.FunctionServiceClient, endpoint);
+        this.folders = this.session.client(serviceClients.FolderServiceClient, endpoint);
+        this.containerRegistryService = this.session.client(serviceClients.RegistryServiceClient, endpoint);
+        this.lockboxPayloadService = this.session.client(serviceClients.PayloadServiceClient, endpoint);
 
         // Init AWS SDK
         const awsConfig = {
@@ -130,11 +132,11 @@ export class YandexCloudProvider implements ServerlessPlugin {
         };
 
         this.ymq = new AWS.SQS({
-            endpoint: 'https://message-queue.api.cloud.yandex.net',
+            endpoint: getEnvStrict('SQS_ENDPOINT', SQS_DEFAULT_ENDPOINT),
             ...awsConfig,
         });
         this.s3 = new AWS.S3({
-            endpoint: 'https://storage.yandexcloud.net',
+            endpoint: getEnvStrict('S3_ENDPOINT', S3_DEFAULT_ENDPOINT),
             ...awsConfig,
         });
     }
