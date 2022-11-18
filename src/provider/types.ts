@@ -42,6 +42,15 @@ export interface CreateS3TriggerRequest extends InvokeFunctionRequest {
 // TODO: get rid of 'any'
 export type CreateYmqTriggerRequest = any;
 
+export interface CreateYdsTriggerRequest extends InvokeFunctionRequest {
+    name: string;
+    stream: string;
+    database: string;
+    streamServiceAccount: string;
+    batch?: number;
+    cutoff?: number;
+}
+
 export interface CreateCrTriggerRequest extends InvokeFunctionRequest {
     name: string;
     events: string[];

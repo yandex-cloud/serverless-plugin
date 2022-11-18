@@ -55,6 +55,25 @@ interface YmqTriggerState extends BaseTriggerState {
         queue: string;
         queueAccount: string;
         retry: RetryOptions,
+        batch?: number,
+        cutoff?: number,
+    };
+}
+
+interface YdsTriggerState extends BaseTriggerState {
+    type: 'yds';
+    params: {
+        stream: string;
+        database: string;
+        streamAccount: string;
+        account: string;
+        retry: RetryOptions,
+        batch?: number,
+        cutoff?: number,
+        dlq?: string;
+        dlqId?: string;
+        dlqAccountId?: string;
+        dlqAccount?: string;
     };
 }
 
@@ -75,7 +94,7 @@ interface CrTriggerState extends BaseTriggerState {
     };
 }
 
-type TriggerState = CrTriggerState | YmqTriggerState | S3TriggerState | CronTriggerState;
+type TriggerState = CrTriggerState | YmqTriggerState | YdsTriggerState | S3TriggerState | CronTriggerState;
 
 export class Trigger {
     public id?: string;
@@ -93,7 +112,7 @@ export class Trigger {
     }
 
     static supportedTriggers(): TriggerType[] {
-        return [TriggerType.CRON, TriggerType.S3, TriggerType.YMQ, TriggerType.CR];
+        return [TriggerType.CRON, TriggerType.S3, TriggerType.YMQ, TriggerType.CR, TriggerType.YDS];
     }
 
     static normalizeEvent(event: Event) {
@@ -141,6 +160,7 @@ export class Trigger {
 
         const response = await this.creators()[this.newState.type]({
             name: triggerName,
+            streamServiceAccount: this.streamServiceAccount(),
             queueServiceAccount: this.queueServiceAccount(),
             queueId: this.queueId(),
             functionId: this.deploy.getFunctionId(this.newState.function.name),
@@ -153,6 +173,10 @@ export class Trigger {
 
         this.id = response?.id;
         log.success(`Trigger created "${triggerName}"`);
+    }
+
+    streamServiceAccount() {
+        return this.newState?.type === 'yds' ? this.deploy.getServiceAccountId(this.newState.params.streamAccount) : undefined;
     }
 
     queueServiceAccount() {
@@ -210,6 +234,7 @@ export class Trigger {
             s3: this.provider.createS3Trigger,
             ymq: this.provider.createYMQTrigger,
             cr: this.provider.createCRTrigger,
+            yds: this.provider.createYDSTrigger,
         };
     }
 }
