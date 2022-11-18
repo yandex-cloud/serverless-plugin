@@ -65,7 +65,7 @@ interface YdsTriggerState extends BaseTriggerState {
     params: {
         stream: string;
         database: string;
-        streamServiceAccount: string;
+        streamAccount: string;
         account: string;
         retry: RetryOptions,
         batch?: number,
@@ -176,7 +176,7 @@ export class Trigger {
     }
 
     streamServiceAccount() {
-        return this.newState?.type === 'yds' ? this.deploy.getServiceAccountId(this.newState.params.streamServiceAccount) : undefined;
+        return this.newState?.type === 'yds' ? this.deploy.getServiceAccountId(this.newState.params.streamAccount) : undefined;
     }
 
     queueServiceAccount() {

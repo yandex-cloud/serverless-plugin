@@ -179,7 +179,7 @@ const schemaYDSTrigger: JSONSchema7 = {
     properties: {
         stream: { type: 'string' },
         database: { type: 'string' },
-        streamServiceAccount: { type: 'string' },
+        streamAccount: { type: 'string' },
         account: { type: 'string' },
         retry: {
             type: 'object',
@@ -195,7 +195,7 @@ const schemaYDSTrigger: JSONSchema7 = {
         dlqAccountId: { type: 'string' },
         dlqAccount: { type: 'string' },
     },
-    required: ['stream', 'database', 'account', 'streamServiceAccount'],
+    required: ['stream', 'database', 'account', 'streamAccount'],
 };
 
 const schemaCRTrigger: JSONSchema7 = {
