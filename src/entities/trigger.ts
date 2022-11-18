@@ -160,6 +160,7 @@ export class Trigger {
 
         const response = await this.creators()[this.newState.type]({
             name: triggerName,
+            streamServiceAccount: this.streamServiceAccount(),
             queueServiceAccount: this.queueServiceAccount(),
             queueId: this.queueId(),
             functionId: this.deploy.getFunctionId(this.newState.function.name),
@@ -172,6 +173,10 @@ export class Trigger {
 
         this.id = response?.id;
         log.success(`Trigger created "${triggerName}"`);
+    }
+
+    streamServiceAccount() {
+        return this.newState?.type === 'yds' ? this.deploy.getServiceAccountId(this.newState.params.streamServiceAccount) : undefined;
     }
 
     queueServiceAccount() {

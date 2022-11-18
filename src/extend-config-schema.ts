@@ -171,7 +171,7 @@ const schemaYMQTrigger: JSONSchema7 = {
         dlqAccountId: { type: 'string' },
         dlqAccount: { type: 'string' },
     },
-    required: ['queue', 'account', 'queueAccount'],
+    required: ['queue', 'account', 'queueAccount', 'batch', 'cutoff'],
 };
 
 const schemaYDSTrigger: JSONSchema7 = {
