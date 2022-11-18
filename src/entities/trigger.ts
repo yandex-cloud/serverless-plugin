@@ -112,7 +112,7 @@ export class Trigger {
     }
 
     static supportedTriggers(): TriggerType[] {
-        return [TriggerType.CRON, TriggerType.S3, TriggerType.YMQ, TriggerType.CR];
+        return [TriggerType.CRON, TriggerType.S3, TriggerType.YMQ, TriggerType.CR, TriggerType.YDS];
     }
 
     static normalizeEvent(event: Event) {
