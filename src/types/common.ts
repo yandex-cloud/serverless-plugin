@@ -416,6 +416,7 @@ export enum TriggerType {
     S3 = 's3',
     YMQ = 'ymq',
     CR = 'cr',
+    YDS = 'yds',
 }
 
 export enum EventType {

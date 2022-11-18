@@ -49,7 +49,7 @@ import {
     CreateMessageQueueRequest,
     CreateS3BucketRequest,
     CreateS3TriggerRequest,
-    CreateServiceAccountRequest,
+    CreateServiceAccountRequest, CreateYdsTriggerRequest,
     CreateYmqTriggerRequest,
     InvokeFunctionRequest,
     UpdateApiGatewayRequest,
@@ -261,6 +261,28 @@ export class YandexCloudProvider implements ServerlessPlugin {
                         functionId: request.functionId,
                         serviceAccountId: request.serviceAccount,
                     },
+                },
+            },
+        }));
+
+        return this.check(operation);
+    }
+
+    @bind
+    async createYDSTrigger(request: CreateYdsTriggerRequest) {
+        const operation = await this.triggers.create(CloudApiTriggersService.CreateTriggerRequest.fromPartial({
+            folderId: this.folderId,
+            name: request.name,
+            rule: {
+                dataStream: {
+                    stream: request.stream,
+                    serviceAccountId: request.streamServiceAccount,
+                    database: request.database,
+                    batchSettings: {
+                        size: request.batch,
+                        cutoff: { seconds: request.cutoff },
+                    },
+                    invokeFunction: this.makeInvokeFunctionWithRetryParams(request),
                 },
             },
         }));

@@ -55,6 +55,25 @@ interface YmqTriggerState extends BaseTriggerState {
         queue: string;
         queueAccount: string;
         retry: RetryOptions,
+        batch?: number,
+        cutoff?: number,
+    };
+}
+
+interface YdsTriggerState extends BaseTriggerState {
+    type: 'yds';
+    params: {
+        stream: string;
+        database: string;
+        streamServiceAccount: string;
+        account: string;
+        retry: RetryOptions,
+        batch?: number,
+        cutoff?: number,
+        dlq?: string;
+        dlqId?: string;
+        dlqAccountId?: string;
+        dlqAccount?: string;
     };
 }
 
@@ -75,7 +94,7 @@ interface CrTriggerState extends BaseTriggerState {
     };
 }
 
-type TriggerState = CrTriggerState | YmqTriggerState | S3TriggerState | CronTriggerState;
+type TriggerState = CrTriggerState | YmqTriggerState | YdsTriggerState | S3TriggerState | CronTriggerState;
 
 export class Trigger {
     public id?: string;
@@ -210,6 +229,7 @@ export class Trigger {
             s3: this.provider.createS3Trigger,
             ymq: this.provider.createYMQTrigger,
             cr: this.provider.createCRTrigger,
+            yds: this.provider.createYDSTrigger,
         };
     }
 }

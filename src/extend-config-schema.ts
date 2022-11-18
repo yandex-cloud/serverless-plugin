@@ -164,8 +164,38 @@ const schemaYMQTrigger: JSONSchema7 = {
                 interval: { type: 'number' },
             },
         },
+        batch: { type: 'number' },
+        cutoff: { type: 'number' },
+        dlq: { type: 'string' },
+        dlqId: { type: 'string' },
+        dlqAccountId: { type: 'string' },
+        dlqAccount: { type: 'string' },
     },
     required: ['queue', 'account', 'queueAccount'],
+};
+
+const schemaYDSTrigger: JSONSchema7 = {
+    type: 'object',
+    properties: {
+        stream: { type: 'string' },
+        database: { type: 'string' },
+        streamServiceAccount: { type: 'string' },
+        account: { type: 'string' },
+        retry: {
+            type: 'object',
+            properties: {
+                attempts: { type: 'number' },
+                interval: { type: 'number' },
+            },
+        },
+        batch: { type: 'number' },
+        cutoff: { type: 'number' },
+        dlq: { type: 'string' },
+        dlqId: { type: 'string' },
+        dlqAccountId: { type: 'string' },
+        dlqAccount: { type: 'string' },
+    },
+    required: ['stream', 'database', 'account', 'streamServiceAccount'],
 };
 
 const schemaCRTrigger: JSONSchema7 = {
@@ -418,6 +448,12 @@ export const extendConfigSchema = (sls: Serverless) => {
         YandexCloudProvider.getProviderName(),
         TriggerType.YMQ,
         schemaYMQTrigger as Record<string, unknown>,
+    );
+
+    sls.configSchemaHandler.defineFunctionEvent(
+        YandexCloudProvider.getProviderName(),
+        TriggerType.YDS,
+        schemaYDSTrigger as Record<string, unknown>,
     );
 
     sls.configSchemaHandler.defineFunctionEvent(
