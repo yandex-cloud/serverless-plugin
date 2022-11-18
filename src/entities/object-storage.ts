@@ -1,6 +1,6 @@
-import Serverless from 'serverless';
-
 import { YandexCloudProvider } from '../provider/provider';
+import { log } from '../utils/logging';
+import Serverless from '../types/serverless';
 
 interface ObjectStorageState {
     name: string;
@@ -32,11 +32,7 @@ export class ObjectStorage {
             return;
         }
 
-        try {
-            await provider.createS3Bucket({ name: this.newState.name });
-            this.serverless.cli.log(`S3 bucket created "${this.newState.name}"`);
-        } catch (error) {
-            this.serverless.cli.log(`${error}\nFailed to create S3 bucket "${this.newState.name}"`);
-        }
+        await provider.createS3Bucket({ name: this.newState.name });
+        log.success(`S3 bucket created "${this.newState.name}"`);
     }
 }

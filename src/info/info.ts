@@ -1,36 +1,36 @@
-import Serverless, { FunctionDefinition } from 'serverless';
 import ServerlessPlugin from 'serverless/classes/Plugin';
 
 import { Trigger } from '../entities/trigger';
 import { YandexCloudProvider } from '../provider/provider';
-import { logger } from '../utils/logger';
 import {
-    FunctionInfo, MessageQueueInfo, S3BucketInfo, ServiceAccountInfo, TriggerInfo,
+    FunctionInfo,
+    MessageQueueInfo,
+    S3BucketInfo,
+    ServiceAccountInfo,
+    TriggerInfo,
 } from '../types/common';
+import { log } from '../utils/logging';
+import Serverless, { FunctionDefinition } from '../types/serverless';
 
 export class YandexCloudInfo implements ServerlessPlugin {
+    hooks: ServerlessPlugin.Hooks;
     private readonly serverless: Serverless;
     private readonly options: Serverless.Options;
-
     private provider: YandexCloudProvider;
     private existingQueues: MessageQueueInfo[] | undefined = undefined;
     private existingBuckets: S3BucketInfo[] | undefined = undefined;
 
-    hooks: ServerlessPlugin.Hooks;
-
     constructor(serverless: Serverless, options: Serverless.Options) {
         this.serverless = serverless;
         this.options = options;
-        this.provider = this.serverless.getProvider('yandex-cloud') as YandexCloudProvider;
+        this.provider = this.serverless.getProvider('yandex-cloud');
 
         this.hooks = {
             'info:info': async () => {
                 try {
                     await this.info();
                 } catch (error) {
-                    logger.error(error);
-
-                    this.serverless.cli.log('Failed to get state');
+                    log.error(`Failed to get state. ${error}`);
                 }
             },
         };
@@ -40,9 +40,9 @@ export class YandexCloudInfo implements ServerlessPlugin {
         const acc = currentAccounts.find((item) => item.name === name);
 
         if (acc) {
-            this.serverless.cli.log(`Service account "${name}" created with id "${acc.id}"`);
+            log.notice(`Service account "${name}" created with id "${acc.id}"`);
         } else {
-            this.serverless.cli.log(`Service account "${name}" not created`);
+            log.warning(`Service account "${name}" not created`);
         }
     }
 
@@ -50,9 +50,9 @@ export class YandexCloudInfo implements ServerlessPlugin {
         const queue = currentQueues.find((item) => item.name === name);
 
         if (queue) {
-            this.serverless.cli.log(`Message queue "${name}" created with id "${queue.id}"`);
+            log.notice(`Message queue "${name}" created with id "${queue.id}"`);
         } else {
-            this.serverless.cli.log(`Message queue "${name}" not created`);
+            log.warning(`Message queue "${name}" not created`);
         }
     }
 
@@ -60,9 +60,9 @@ export class YandexCloudInfo implements ServerlessPlugin {
         const bucket = currentBuckets.find((item) => item.name === name);
 
         if (bucket) {
-            this.serverless.cli.log(`Object storage bucket "${name}" created`);
+            log.notice(`Object storage bucket "${name}" created`);
         } else {
-            this.serverless.cli.log(`Object storage bucket "${name}" not created`);
+            log.warning(`Object storage bucket "${name}" not created`);
         }
     }
 
@@ -78,9 +78,9 @@ export class YandexCloudInfo implements ServerlessPlugin {
             const trigger = currentTriggers.find((item) => item.name === triggerName);
 
             if (trigger) {
-                this.serverless.cli.log(`Trigger "${triggerName}" for function "${func}" deployed with id "${trigger.id}"`);
+                log.notice(`Trigger "${triggerName}" for function "${func}" deployed with id "${trigger.id}"`);
             } else {
-                this.serverless.cli.log(`Trigger "${triggerName}" for function "${func}" not deployed`);
+                log.warning(`Trigger "${triggerName}" for function "${func}" not deployed`);
             }
         }
     }
@@ -89,12 +89,25 @@ export class YandexCloudInfo implements ServerlessPlugin {
         const func = currentFunctions.find((currFunc) => currFunc.name === params.name);
 
         if (func) {
-            this.serverless.cli.log(`Function "${name}" deployed with id "${func.id}"`);
+            log.notice(`Function "${name}" deployed with id "${func.id}"`);
             this.triggersInfo(name, params, currentTriggers);
         } else {
-            this.serverless.cli.log(`Function "${name}" not deployed`);
+            log.warning(`Function "${name}" not deployed`);
         }
     }
+
+    async apiGatewayInfo() {
+        const existingApiGateway = await this.provider.getApiGateway();
+
+        if (existingApiGateway?.id) {
+            log.notice(
+                `API Gateway "${existingApiGateway.name}" deployed with url "https://${existingApiGateway.id}.apigw.yandexcloud.net/"`,
+            );
+        } else {
+            log.warning(`API Gateway "${existingApiGateway.name}" not deployed`);
+        }
+    }
+
     async getMessageQueuesCached() {
         if (!this.existingQueues) {
             this.existingQueues = await this.provider.getMessageQueues();
@@ -132,7 +145,7 @@ export class YandexCloudInfo implements ServerlessPlugin {
                         break;
                 }
             } catch (error) {
-                this.serverless.cli.log(`Failed to get state for "${key}"
+                log.error(`Failed to get state for "${key}"
         ${error}
         Maybe you should set AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY environment variables`);
             }
@@ -143,5 +156,7 @@ export class YandexCloudInfo implements ServerlessPlugin {
                 this.serviceAccountInfo(key, value, currentServiceAccounts);
             }
         }
+
+        await this.apiGatewayInfo();
     }
 }

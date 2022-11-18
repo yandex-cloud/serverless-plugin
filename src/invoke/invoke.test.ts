@@ -1,5 +1,5 @@
-import Serverless from 'serverless';
 import { YandexCloudInvoke } from './invoke';
+import Serverless from '../types/serverless';
 
 describe('Invoke', () => {
     let providerMock: any;

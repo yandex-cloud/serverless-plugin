@@ -2,3 +2,4 @@
 node_modules
 dist
 templates/nodejs/package-lock.json
+.DS_Store

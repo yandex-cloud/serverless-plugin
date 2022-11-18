@@ -1,6 +1,6 @@
 {
   "name": "@yandex-cloud/serverless-plugin",
-  "version": "1.0.0-beta.4",
+  "version": "1.6.0",
   "description": "Provider plugin for the Serverless Framework which adds support for Yandex Cloud Functions.",
   "keywords": [
     "yandex-cloud",
@@ -25,18 +25,20 @@
     "node": ">=12.0.0"
   },
   "dependencies": {
+    "@serverless/utils": "^6.4.0",
     "@yandex-cloud/nodejs-sdk": "^2.0.0",
     "aws-sdk": "^2.695.0",
     "axios": "^0.24.0",
     "bind-decorator": "^1.0.11",
     "lodash": "^4.17.21",
-    "log4js": "^6.3.0",
     "yaml": "^1.8.3"
   },
   "devDependencies": {
     "@commitlint/cli": "^16.0.1",
     "@commitlint/config-conventional": "^16.0.0",
     "@semantic-release/git": "^10.0.1",
+    "@swc/core": "^1.2.237",
+    "@swc/jest": "^0.2.22",
     "@types/jest": "^27.4.0",
     "@types/json-schema": "^7.0.9",
     "@types/lodash": "^4.14.178",
@@ -48,10 +50,10 @@
     "eslint-plugin-prefer-arrow-functions": "^3.1.4",
     "eslint-plugin-unicorn": "^39.0.0",
     "husky": "^7.0.4",
-    "jest": "^27.4.5",
-    "semantic-release": "^18.0.1",
+    "jest": "^27.5.1",
+    "openapi-types": "^11.0.0",
+    "semantic-release": "^19.0.3",
     "ts-jest": "^27.1.2",
-    "ts-node": "^10.4.0",
     "typescript": "^4.5.4"
   },
   "peerDependencies": {

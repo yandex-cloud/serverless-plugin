@@ -1,19 +1,23 @@
-import Serverless, { FunctionDefinition } from 'serverless';
 import ServerlessPlugin from 'serverless/classes/Plugin';
 
 import { Trigger } from '../entities/trigger';
 import { YandexCloudProvider } from '../provider/provider';
 import {
-    FunctionInfo, MessageQueueInfo, S3BucketInfo, ServiceAccountInfo, TriggerInfo,
+    ApiGatewayInfo,
+    FunctionInfo,
+    MessageQueueInfo,
+    S3BucketInfo,
+    ServiceAccountInfo,
+    TriggerInfo,
 } from '../types/common';
+import { log } from '../utils/logging';
+import Serverless from '../types/serverless';
 
 export class YandexCloudRemove implements ServerlessPlugin {
+    hooks: ServerlessPlugin.Hooks;
     private readonly serverless: Serverless;
     private readonly options: Serverless.Options;
     private readonly provider: YandexCloudProvider;
-
-    hooks: ServerlessPlugin.Hooks;
-
     private existingQueues: MessageQueueInfo[] | undefined = undefined;
     private existingBuckets: S3BucketInfo[] | undefined = undefined;
 
@@ -35,9 +39,9 @@ export class YandexCloudRemove implements ServerlessPlugin {
         if (functionFound) {
             await this.provider.removeFunction(functionFound.id);
 
-            this.serverless.cli.log(`Function "${describedFunctionName}" removed`);
+            log.success(`Function "${describedFunctionName}" removed`);
         } else {
-            this.serverless.cli.log(`Function "${describedFunctionName}" not found`);
+            log.notice.skip(`Function "${describedFunctionName}" not found`);
         }
     }
 
@@ -47,9 +51,9 @@ export class YandexCloudRemove implements ServerlessPlugin {
         if (triggerFound) {
             await this.provider.removeTrigger(triggerFound.id);
 
-            this.serverless.cli.log(`Trigger "${describedTriggerName}" removed`);
+            log.success(`Trigger "${describedTriggerName}" removed`);
         } else {
-            this.serverless.cli.log(`Trigger "${describedTriggerName}" not found`);
+            log.notice.skip(`Trigger "${describedTriggerName}" not found`);
         }
     }
 
@@ -59,9 +63,9 @@ export class YandexCloudRemove implements ServerlessPlugin {
         if (accFound) {
             await this.provider.removeServiceAccount(accFound.id);
 
-            this.serverless.cli.log(`Service account "${describedSaName}" removed`);
+            log.success(`Service account "${describedSaName}" removed`);
         } else {
-            this.serverless.cli.log(`Service account "${describedSaName}" not found`);
+            log.notice.skip(`Service account "${describedSaName}" not found`);
         }
     }
 
@@ -70,9 +74,9 @@ export class YandexCloudRemove implements ServerlessPlugin {
 
         if (found) {
             await this.provider.removeMessageQueue(found.url);
-            this.serverless.cli.log(`Message queue "${describesQueueName}" removed`);
+            log.success(`Message queue "${describesQueueName}" removed`);
         } else {
-            this.serverless.cli.log(`Message queue "${describesQueueName}" not found`);
+            log.notice.skip(`Message queue "${describesQueueName}" not found`);
         }
     }
 
@@ -81,9 +85,20 @@ export class YandexCloudRemove implements ServerlessPlugin {
 
         if (found) {
             await this.provider.removeS3Bucket(describesBucketName);
-            this.serverless.cli.log(`S3 bucket "${describesBucketName}" removed`);
+            log.success(`S3 bucket "${describesBucketName}" removed`);
         } else {
-            this.serverless.cli.log(`S3 bucket "${describesBucketName}" not found`);
+            log.notice.skip(`S3 bucket "${describesBucketName}" not found`);
+        }
+    }
+
+    async removeApiGateway(existingApiGateway: ApiGatewayInfo) {
+        const found = existingApiGateway.id;
+
+        if (found) {
+            await this.provider.removeApiGateway(found);
+            log.success(`API Gateway "${existingApiGateway.name}" removed`);
+        } else {
+            log.notice.skip(`API Gateway "${existingApiGateway.name}" not found`);
         }
     }
 
@@ -108,6 +123,7 @@ export class YandexCloudRemove implements ServerlessPlugin {
         const existingTriggers = await this.provider.getTriggers();
         const describedFunctions = this.serverless.service.functions;
         const existingAccounts = await this.provider.getServiceAccounts();
+        const existingApiGateway = await this.provider.getApiGateway();
 
         for (const descFunc of Object.values(describedFunctions)) {
             for (const triggerType of Trigger.supportedTriggers()) {
@@ -133,7 +149,7 @@ export class YandexCloudRemove implements ServerlessPlugin {
                         break;
                 }
             } catch (error) {
-                this.serverless.cli.log(`${error} Maybe you should set AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY environment variables`);
+                log.error(`${error} Maybe you should set AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY environment variables`);
             }
         }
 
@@ -142,5 +158,6 @@ export class YandexCloudRemove implements ServerlessPlugin {
                 this.removeServiceAccount(name, existingAccounts);
             }
         }
+        this.removeApiGateway(existingApiGateway);
     }
 }

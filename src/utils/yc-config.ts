@@ -1,19 +1,21 @@
 import path from 'path';
 import yaml from 'yaml';
 import fs from 'fs';
-import { getEnv, getEnvStrict } from './get-env';
-import { logger } from './logger';
+import * as os from 'os';
+import { getEnv } from './get-env';
+import { log } from './logging';
 
 interface YcConfigBase {
     cloudId: string;
     folderId: string;
+    endpoint?: string;
 }
 
-interface YcConfigOauth extends YcConfigBase{
+interface YcConfigOauth extends YcConfigBase {
     token: string;
 }
 
-interface YcConfigIam extends YcConfigBase{
+interface YcConfigIam extends YcConfigBase {
     iamToken: string;
 }
 
@@ -23,7 +25,8 @@ const YC_OAUTH_TOKEN_ENV = 'YC_OAUTH_TOKEN';
 const YC_IAM_TOKEN_ENV = 'YC_IAM_TOKEN';
 const YC_CLOUD_ID = 'YC_CLOUD_ID';
 const YC_FOLDER_ID = 'YC_FOLDER_ID';
-const YC_CONFIG_PATH = path.join(getEnvStrict('HOME'), '.config/yandex-cloud/config.yaml');
+const YC_ENDPOINT = 'YC_ENDPOINT';
+const YC_CONFIG_PATH = path.join(os.homedir(), '.config/yandex-cloud/config.yaml');
 
 const readYcConfigFile = () => {
     let config;
@@ -52,16 +55,18 @@ export const getYcConfig = (): YcConfig => {
     const iamTokenFromEnv = getEnv(YC_IAM_TOKEN_ENV);
     const cloudIdFromEnv = getEnv(YC_CLOUD_ID);
     const folderIdFromEnv = getEnv(YC_FOLDER_ID);
+    const endpointFromEnv = getEnv(YC_ENDPOINT);
     const isTokenDefined = Boolean(iamTokenFromEnv || oauthTokenFromEnv);
 
     if (isTokenDefined && cloudIdFromEnv && folderIdFromEnv) {
-        logger.info('Found YC configuration in environment variables, using it');
+        log.info('Found YC configuration in environment variables, using it');
 
         if (iamTokenFromEnv) {
             return {
                 iamToken: iamTokenFromEnv,
                 cloudId: cloudIdFromEnv,
                 folderId: folderIdFromEnv,
+                endpoint: endpointFromEnv,
             };
         }
 
@@ -70,14 +75,17 @@ export const getYcConfig = (): YcConfig => {
                 token: oauthTokenFromEnv,
                 cloudId: cloudIdFromEnv,
                 folderId: folderIdFromEnv,
+                endpoint: endpointFromEnv,
             };
         }
     }
 
-    logger.info(`YC configuration in environment variables not found, reading yc config file: ${YC_CONFIG_PATH}`);
+    log.info(`YC configuration in environment variables not found, reading yc config file: ${YC_CONFIG_PATH}`);
 
     const config = readYcConfigFile();
-    const { token, 'cloud-id': cloudId, 'folder-id': folderId } = config;
+    const {
+        token, 'cloud-id': cloudId, 'folder-id': folderId, endpoint,
+    } = config;
 
     if (!token) {
         throw new Error(`Token is not defined in ${YC_CONFIG_PATH}`);
@@ -95,5 +103,6 @@ export const getYcConfig = (): YcConfig => {
         token,
         cloudId,
         folderId,
+        endpoint,
     };
 };

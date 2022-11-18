@@ -1,4 +1,4 @@
-[![npm](https://img.shields.io/npm/v/serverless-yandex-cloud.svg)](https://www.npmjs.com/package/serverless-yandex-cloud)
+[![npm](https://img.shields.io/npm/v/@yandex-cloud/serverless-plugin)](https://www.npmjs.com/package/@yandex-cloud/serverless-plugin)
 [![License](https://img.shields.io/github/license/yandex-cloud/serverless-plugin.svg)](https://github.com/yandex-cloud/serverless-plugin/blob/master/LICENSE)
 
 
@@ -34,6 +34,36 @@ To remove all deployed resources:
 
     serverless remove
 
+## Configuration variables from Lockbox
+
+This plugin adds [configuration variable source](https://www.serverless.com/framework/docs/providers/aws/guide/variables), which allows to retrieve secrets from [Lockbox](https://cloud.yandex.com/en/docs/lockbox/).
+Usage example:
+```yaml
+functions:
+  simple:
+    handler: dist/index.hello
+    memorySize: 128
+    timeout: '5'
+    account: function-sa
+    environment:
+      DB_PASSWORD: ${lockbox:<lockbox_secret_id>/<lockbox_secret_key>}
+```
+
+## Environment Variables
+#### API Endpoints
+- S3_ENDPOINT
+- SQS_ENDPOINT
+- YC_ENDPOINT
+
+#### AWS Access Key (for YMQ and Object Storage manipulations)
+- AWS_ACCESS_KEY_ID
+- AWS_SECRET_ACCESS_KEY
+- 
+#### Cloud API Authentication
+- YC_OAUTH_TOKEN_ENV
+- YC_IAM_TOKEN_ENV
+- YC_CLOUD_ID
+- YC_FOLDER_ID
 
 ## Supported resources
 - Cloud Functions

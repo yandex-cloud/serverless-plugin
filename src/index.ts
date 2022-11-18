@@ -1,6 +1,6 @@
 /* eslint-disable import/no-import-module-exports */
-import Serverless from 'serverless';
 
+import ServerlessPlugin from 'serverless/classes/Plugin';
 import { YandexCloudProvider } from './provider/provider';
 import { YandexCloudDeploy } from './deploy/deploy';
 import { YandexCloudRemove } from './remove/remove';
@@ -8,8 +8,11 @@ import { YandexCloudInvoke } from './invoke/invoke';
 import { YandexCloudInfo } from './info/info';
 import { YandexCloudLogs } from './logs/logs';
 import { extendConfigSchema } from './extend-config-schema';
+import Serverless from './types/serverless';
+import { YandexCloudLockbox } from './lockbox/lockbox';
 
-class YandexCloudServerlessPlugin {
+class YandexCloudServerlessPlugin implements ServerlessPlugin {
+    hooks: ServerlessPlugin.Hooks = {};
     private readonly serverless: Serverless;
     private readonly options: Serverless.Options;
 
@@ -23,6 +26,7 @@ class YandexCloudServerlessPlugin {
         this.serverless.pluginManager.addPlugin(YandexCloudInvoke);
         this.serverless.pluginManager.addPlugin(YandexCloudInfo);
         this.serverless.pluginManager.addPlugin(YandexCloudLogs);
+        this.serverless.pluginManager.addPlugin(YandexCloudLockbox);
 
         extendConfigSchema(this.serverless);
     }
