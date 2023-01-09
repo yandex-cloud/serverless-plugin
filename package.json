@@ -26,7 +26,7 @@
   },
   "dependencies": {
     "@serverless/utils": "^6.4.0",
-    "@yandex-cloud/nodejs-sdk": "^2.0.0",
+    "@yandex-cloud/nodejs-sdk": "^2.3.1",
     "aws-sdk": "^2.695.0",
     "axios": "^0.24.0",
     "bind-decorator": "^1.0.11",
