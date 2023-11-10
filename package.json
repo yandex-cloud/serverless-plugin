@@ -28,7 +28,7 @@
     "@serverless/utils": "^6.4.0",
     "@yandex-cloud/nodejs-sdk": "^2.3.1",
     "aws-sdk": "^2.695.0",
-    "axios": "^0.24.0",
+    "axios": "^1.6.0",
     "bind-decorator": "^1.0.11",
     "lodash": "^4.17.21",
     "yaml": "^2.2.2"
