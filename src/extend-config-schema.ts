@@ -295,6 +295,7 @@ export const extendConfigSchema = (sls: Serverless) => {
                     'nodejs12',
                     'nodejs14',
                     'nodejs16',
+                    'nodejs18',
                     'python27',
                     'python37',
                     'python38',
