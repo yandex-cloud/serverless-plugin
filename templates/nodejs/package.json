@@ -6,9 +6,9 @@
 		"deploy": "npm run build && npx --no-install serverless deploy"
 	},
 	"devDependencies": {
-		"@yandex-cloud/serverless-plugin": "^1.0.2",
-		"@yandex-cloud/function-types": "^2.0.1",
-		"serverless": "^3.16.0",
-		"typescript": "^4.5.4"
+		"@yandex-cloud/serverless-plugin": "^1.7.18",
+		"@yandex-cloud/function-types": "^2.1.1",
+		"serverless": "^3.38.0",
+		"typescript": "^4.9.5"
 	}
 }
