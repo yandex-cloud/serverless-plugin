@@ -325,6 +325,7 @@ export interface AttachedDomain {
 
 export interface ApiGatewayInfo {
     id?: string;
+    domain?: string;
     name: string;
     domains?: AttachedDomain[];
     openapiSpec?: string;
