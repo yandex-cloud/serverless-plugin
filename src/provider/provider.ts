@@ -535,6 +535,7 @@ export class YandexCloudProvider implements ServerlessPlugin {
             return {
                 name: apiGateway.name,
                 id: apiGateway.id,
+                domain: apiGateway.domain,
                 domains: apiGateway.attachedDomains,
                 openapiSpec: specResponse.openapiSpec,
             };
