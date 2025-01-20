@@ -2,7 +2,7 @@
 [![License](https://img.shields.io/github/license/yandex-cloud/serverless-plugin.svg)](https://github.com/yandex-cloud/serverless-plugin/blob/master/LICENSE)
 
 
-# Serverless Yandex Cloud Functions Plugin
+# Serverless Framework: Yandex Cloud
 
 This plugin enables support for Yandex Cloud Functions within the [Serverless Framework](https://github.com/serverless/serverless).
 
